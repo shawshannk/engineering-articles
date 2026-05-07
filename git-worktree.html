@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Git worktree lets you check out multiple branches simultaneously in separate directories. No stashing, no context loss, no interruptions.">
+  <meta name="author" content="Shashank">
+  <meta property="og:title" content="Two Branches. One Repo. No Stashing.">
+  <meta property="og:description" content="A practical guide to git worktree: work on two branches simultaneously without losing your context.">
+  <meta property="og:type" content="article">
+  <title>The Git Feature Nobody Teaches</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #faf9f7;
+      --bg2:        #f3f1ee;
+      --bg3:        #eceae6;
+      --text:       #44403c;
+      --text-hi:    #1c1917;
+      --text-lo:    #a8a29e;
+      --text-mid:   #78716c;
+      --accent:     #c2570a;
+      --accent-dim: #fed7aa;
+      --accent-bg:  #fff7ed;
+      --border:     #e7e5e0;
+      --border-hi:  #d6d3cd;
+      --green:      #16803c;
+      --green-bg:   #f0fdf4;
+      --code-bg:    #f3f1ee;
+      --code-text:  #292524;
+      --code-key:   #b45309;
+      --code-str:   #166534;
+      --code-cmt:   #a8a29e;
+      --code-dim:   #78716c;
+    }
+
+    html { font-size: 17px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+      font-weight: 300;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection { background: var(--accent-dim); color: var(--accent); }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 0;
+    }
+
+    .header-inner {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .site-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+    }
+
+    .site-label span { color: var(--accent); }
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    .hero {
+      padding: 4rem 0 3.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tag-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-bg);
+      border: 1px solid var(--accent-dim);
+      padding: 0.2rem 0.65rem;
+      border-radius: 2px;
+    }
+
+    .tag-divider { width: 24px; height: 1px; background: var(--border-hi); }
+
+    .tag-category {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+    }
+
+    h1 {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: clamp(2rem, 5.5vw, 3rem);
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: var(--text-hi);
+      margin-bottom: 1.25rem;
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      font-weight: 300;
+      color: var(--text-mid);
+      line-height: 1.7;
+      max-width: 580px;
+      margin-bottom: 2rem;
+    }
+
+    .byline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      color: var(--text-lo);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .byline .author { color: var(--text-mid); }
+
+    .article-body { padding: 0 0 4rem; }
+    .article-body > * + * { margin-top: 1.5rem; }
+
+    .section { margin-top: 3.5rem; }
+
+    .section-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    h2 {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 500;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      color: var(--text-hi);
+      margin-bottom: 1.25rem;
+    }
+
+    h3 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-mid);
+      margin-top: 2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    p { font-size: 1rem; color: var(--text); }
+    p + p { margin-top: 1rem; }
+
+    strong { font-weight: 500; color: var(--text-hi); }
+
+    a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: var(--text-hi); }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78em;
+      background: var(--bg3);
+      color: var(--code-key);
+      padding: 0.1em 0.4em;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      line-height: 1.75;
+      margin-top: 1rem;
+    }
+
+    pre code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem;
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--code-text);
+      display: block;
+    }
+
+    .c { color: var(--code-cmt); }
+    .k { color: var(--code-key); }
+    .s { color: var(--code-str); }
+    .d { color: var(--code-dim); }
+
+    .callout {
+      background: var(--accent-bg);
+      border: 1px solid var(--accent-dim);
+      border-radius: 4px;
+      padding: 1rem 1.25rem;
+      font-size: 0.95rem;
+      margin-top: 1.5rem;
+    }
+
+    .callout-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .callout p { color: var(--text); }
+
+    .callout.green { background: var(--green-bg); border-color: #bbf7d0; }
+    .callout.green .callout-label { color: var(--green); }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+
+    thead tr { background: var(--bg2); border-bottom: 1px solid var(--border-hi); }
+
+    th {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+      text-align: left;
+      padding: 0.7rem 1rem;
+      font-weight: 500;
+    }
+
+    td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg2); }
+    td code { font-size: 0.72rem; }
+
+    .rule { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+
+    .process-note {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 3rem;
+      font-size: 0.85rem;
+      color: var(--text-mid);
+      line-height: 1.7;
+    }
+
+    .process-note strong { color: var(--text); font-weight: 500; }
+
+    footer { border-top: 1px solid var(--border); padding: 1.5rem 0; }
+
+    .footer-inner {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .footer-inner span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+      color: var(--text-lo);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .hero { animation: up 0.45s ease both; }
+      .article-body { animation: up 0.45s ease 0.08s both; }
+      @keyframes up {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+    }
+
+    @media (max-width: 600px) {
+      html { font-size: 15px; }
+      .hero { padding: 2.5rem 0 2rem; }
+      pre { padding: 1rem; }
+      .header-inner { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <span class="site-label">Technical Deep Dive &middot; <span>Git</span></span>
+    <span class="site-label">shashank.dev</span>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <div class="hero">
+      <div class="tag-row">
+        <span class="tag">Git</span>
+        <span class="tag-divider"></span>
+        <span class="tag-category">Version Control</span>
+      </div>
+      <h1>The Git Feature Nobody Teaches</h1>
+      <p class="subtitle">Git worktree has been in Git since 2.5 and most developers have never used it. Here is what it does and why you should care.</p>
+      <div class="byline">
+        <span class="author">By Shashank</span>
+        <span>6 min read</span>
+        <span>May 2026</span>
+      </div>
+    </div>
+
+    <article class="article-body">
+
+      <div class="section">
+        <span class="section-num">01</span>
+        <h2>The Problem</h2>
+        <p>You are mid-feature. Files half staged, a mental model loaded, your editor has the right tabs open. Then a message arrives. There is a bug on <code>main</code>. Fix it now.</p>
+        <p>So you stash, switch branches, fix the bug, switch back, pop the stash, and spend ten minutes reconstructing what you were doing. Sometimes the stash pops with a conflict. Sometimes you forget to pop it at all. It is a friction tax you pay every single time.</p>
+        <p>Git worktree eliminates this. It lets you check out multiple branches simultaneously, each in its own directory, sharing a single <code>.git</code> database. Your original working directory stays untouched. You do the urgent work somewhere else, commit, push, clean up, and come back exactly where you left off.</p>
+      </div>
+
+      <div class="section">
+        <span class="section-num">02</span>
+        <h2>How It Works</h2>
+        <p>A normal clone is one directory, one branch at a time:</p>
+
+        <pre><code><span class="d">~/projects/my-repo/</span>
+  <span class="k">.git/</span>        <span class="c"># full git database</span>
+  <span class="d">src/</span>         <span class="c"># files from your current branch</span></code></pre>
+
+        <p>After adding a worktree:</p>
+
+        <pre><code><span class="d">~/projects/my-repo/</span>          <span class="c"># main worktree, feature/dashboard</span>
+  <span class="k">.git/</span>                      <span class="c"># ONE shared git database</span>
+  <span class="d">src/</span>
+
+<span class="d">~/projects/bugfix-431/</span>       <span class="c"># linked worktree, fix/431</span>
+  <span class="k">.git</span>                       <span class="c"># a FILE, not a folder, points back</span>
+  <span class="d">src/</span>                       <span class="c"># files from fix/431</span></code></pre>
+
+        <p>The <code>.git</code> in the linked worktree is a plain text file with one line pointing back to the real database. Git tracks each worktree's own <code>HEAD</code> and staging area inside <code>.git/worktrees/</code>. Two directories, two branches, one repo. No duplication, no second clone.</p>
+
+        <div class="callout">
+          <span class="callout-label">Key insight</span>
+          <p>Staging changes in one worktree never affects another. Each worktree has its own index. But branches and objects are shared, so commits made in any worktree are immediately visible everywhere.</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <span class="section-num">03</span>
+        <h2>The Commands</h2>
+
+        <h3>Create a worktree</h3>
+        <pre><code>git worktree add ../bugfix-431 -b fix/431 origin/main</code></pre>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Part</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><code>git worktree add</code></td><td>Creates a linked worktree</td></tr>
+              <tr><td><code>../bugfix-431</code></td><td>Path where the new directory gets created</td></tr>
+              <tr><td><code>-b fix/431</code></td><td>Creates and checks out a new branch named <code>fix/431</code></td></tr>
+              <tr><td><code>origin/main</code></td><td>Starting point for the new branch, equivalent to <code>git branch fix/431 origin/main</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style="margin-top:1.25rem">If the branch already exists, drop <code>-b</code> and pass the name directly:</p>
+        <pre><code>git worktree add ../bugfix-431 fix/431</code></pre>
+
+        <h3>List all open worktrees</h3>
+        <pre><code>git worktree list
+
+<span class="c"># output</span>
+/home/user/my-repo          abc1234 [feature/dashboard]
+/home/user/bugfix-431       def5678 [fix/431]</code></pre>
+
+        <h3>Remove a worktree</h3>
+        <pre><code>git worktree remove ../bugfix-431</code></pre>
+        <p>Deletes the directory and its entry in <code>.git/worktrees/</code>. Refuses if there are uncommitted changes. Add <code>--force</code> to override.</p>
+
+        <h3>Prune stale references</h3>
+        <pre><code>git worktree prune</code></pre>
+        <p>If you deleted a worktree directory manually with <code>rm -rf</code>, Git still has a stale entry. This command cleans it up. Run it whenever <code>git worktree list</code> shows a path that no longer exists.</p>
+      </div>
+
+      <div class="section">
+        <span class="section-num">04</span>
+        <h2>Rules Before You Use It</h2>
+
+        <p><strong>The same branch cannot be in two worktrees at once.</strong> Git enforces this. The error message is <code>already checked out</code>. It prevents you from editing the same branch in two places simultaneously.</p>
+
+        <p><strong>Deleting a worktree does not delete the branch.</strong> <code>git worktree remove</code> only removes the directory and the registration. The branch still lives locally and on the remote. To clean up completely:</p>
+
+        <pre><code>git worktree remove ../bugfix-431  <span class="c"># remove the directory</span>
+git branch -d fix/431              <span class="c"># delete local branch</span>
+git push origin --delete fix/431   <span class="c"># delete remote branch if needed</span></code></pre>
+
+        <p>If the branch was never merged and Git refuses <code>-d</code>, use capital <code>-D</code> to force it:</p>
+        <pre><code>git branch -D fix/431</code></pre>
+
+        <p><strong>New branches start local-only.</strong> Creating a branch via <code>-b</code> means it only exists on your machine. Push when ready:</p>
+        <pre><code>git push -u origin fix/431</code></pre>
+
+        <p><strong>Stashes are per-repo, not per-worktree.</strong> A stash created in your main directory is visible from the linked worktree too. They share the same <code>.git</code>.</p>
+
+        <p><strong>Git hooks apply to all worktrees.</strong> Pre-commit, pre-push, everything in <code>.git/hooks/</code> runs wherever you commit.</p>
+
+        <p><strong>Do not move a worktree after creating it.</strong> Git stores the absolute path. If you rename or move the directory, Git loses track. Run <code>git worktree prune</code> and recreate it at the new path.</p>
+
+        <p><strong>If you create worktrees inside the repo root, add them to <code>.gitignore</code>.</strong> Otherwise Git treats them as untracked content:</p>
+        <pre><code>echo <span class="s">"worktrees/"</span> >> .gitignore</code></pre>
+      </div>
+
+      <div class="section">
+        <span class="section-num">05</span>
+        <h2>The Workflow in Practice</h2>
+
+        <pre><code><span class="c"># you are on feature/dashboard, mid-work</span>
+cd ~/projects/my-repo
+
+<span class="c"># bug reported, create a worktree for the fix</span>
+git worktree add ../bugfix-431 -b fix/431 origin/main
+
+<span class="c"># open a second VS Code window pointed at the new directory</span>
+code ../bugfix-431
+
+<span class="c"># fix the bug, commit, push</span>
+cd ../bugfix-431
+git commit -am <span class="s">"fix: null ref in payment handler"</span>
+git push -u origin fix/431
+
+<span class="c"># back to your feature, nothing has changed</span>
+cd ../my-repo
+
+<span class="c"># clean up once the PR is merged</span>
+git worktree remove ../bugfix-431
+git branch -d fix/431</code></pre>
+
+        <p>Your <code>feature/dashboard</code> branch was never touched. The editor state in your first window is exactly as you left it. The second VS Code window ran independently in its own directory. That is the practical payoff.</p>
+      </div>
+
+      <div class="section">
+        <span class="section-num">06</span>
+        <h2>Multiple Worktrees in Parallel</h2>
+
+        <p>You are not limited to one. If a bug needs fixing on both <code>dev</code> and <code>prod</code> while you stay on your feature branch:</p>
+
+        <pre><code>git worktree add ./worktrees/fix-dev  -b fix/bug-dev  origin/dev
+git worktree add ./worktrees/fix-prod -b fix/bug-prod origin/main
+
+<span class="c"># three directories live simultaneously</span>
+<span class="c"># my-repo/               feature/dashboard</span>
+<span class="c"># worktrees/fix-dev/     fix/bug-dev</span>
+<span class="c"># worktrees/fix-prod/    fix/bug-prod</span></code></pre>
+
+        <p>Open three VS Code windows, one per directory. Work on all three independently without a single branch switch.</p>
+      </div>
+
+      <hr class="rule">
+
+      <div class="section" style="margin-top:0">
+        <span class="section-num">07</span>
+        <h2>Quick Reference</h2>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><code>git worktree add &lt;path&gt; -b &lt;branch&gt; &lt;start&gt;</code></td><td>Create worktree with a new branch</td></tr>
+              <tr><td><code>git worktree add &lt;path&gt; &lt;branch&gt;</code></td><td>Create worktree for an existing branch</td></tr>
+              <tr><td><code>git worktree list</code></td><td>List all active worktrees</td></tr>
+              <tr><td><code>git worktree remove &lt;path&gt;</code></td><td>Remove a worktree cleanly</td></tr>
+              <tr><td><code>git worktree remove --force &lt;path&gt;</code></td><td>Remove with uncommitted changes</td></tr>
+              <tr><td><code>git worktree prune</code></td><td>Clean up stale references</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="callout green" style="margin-top:2.5rem">
+        <span class="callout-label">When not to use it</span>
+        <p>Worktrees solve one specific problem: you are deep in work on one branch and something urgent lands on another. They are not a replacement for branches and they do not help when a change needs to span two branches at once. The sweet spot is exactly what they were designed for: something urgent arrives, you handle it without dropping what you are doing, and you clean up when it is done.</p>
+      </div>
+
+    </article>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <span>Two Branches. One Repo. No Stashing. &middot; Technical Deep Dive &middot; May 2026</span>
+    <span>Written by <strong style="color:var(--text-mid);font-weight:500">Shashank</strong></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Technical writing on Git, AI engineering, software architecture, and developer tooling by Shashank.">
+  <meta name="author" content="Shashank">
+  <meta property="og:title" content="Shashank · Engineering Articles">
+  <meta property="og:description" content="Technical deep dives on Git, AI engineering, software architecture, and developer tooling.">
+  <meta property="og:type" content="website">
+  <title>Shashank · Engineering Articles</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #faf9f7;
+      --bg2:        #f3f1ee;
+      --bg3:        #eceae6;
+      --text:       #44403c;
+      --text-hi:    #1c1917;
+      --text-lo:    #a8a29e;
+      --text-mid:   #78716c;
+      --accent:     #c2570a;
+      --accent-dim: #fed7aa;
+      --accent-bg:  #fff7ed;
+      --border:     #e7e5e0;
+      --border-hi:  #d6d3cd;
+    }
+
+    html { font-size: 17px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+      font-weight: 300;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    ::selection { background: var(--accent-dim); color: var(--accent); }
+
+    /* ---- Header ---- */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 0;
+    }
+
+    .header-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .site-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+    }
+
+    .site-label span { color: var(--accent); }
+
+    /* ---- Container ---- */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      flex: 1;
+    }
+
+    /* ---- Hero ---- */
+    .hero {
+      padding: 4rem 0 3rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-left {}
+
+    .hero-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    h1 {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      color: var(--text-hi);
+      margin-bottom: 0.75rem;
+    }
+
+    .hero-sub {
+      font-size: 0.95rem;
+      color: var(--text-mid);
+      font-weight: 300;
+      max-width: 420px;
+      line-height: 1.65;
+    }
+
+    .hero-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      color: var(--text-lo);
+      line-height: 1.9;
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    /* ---- Articles section ---- */
+    .articles-section {
+      padding: 3rem 0 2rem;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+    }
+
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ---- Article card ---- */
+    .article-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .article-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 2rem;
+      padding: 1.75rem 0;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.1s;
+      cursor: pointer;
+    }
+
+    .article-card:hover .card-title {
+      color: var(--accent);
+    }
+
+    .article-card:hover .card-arrow {
+      transform: translateX(3px);
+      color: var(--accent);
+    }
+
+    .card-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: var(--text-lo);
+      padding-top: 0.3rem;
+      min-width: 24px;
+    }
+
+    .card-body { flex: 1; }
+
+    .card-tags {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .card-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-bg);
+      border: 1px solid var(--accent-dim);
+      padding: 0.15rem 0.5rem;
+      border-radius: 2px;
+    }
+
+    .card-meta-inline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.06em;
+      color: var(--text-lo);
+    }
+
+    .card-title {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 500;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      color: var(--text-hi);
+      margin-bottom: 0.5rem;
+      transition: color 0.15s;
+    }
+
+    .card-desc {
+      font-size: 0.88rem;
+      color: var(--text-mid);
+      font-weight: 300;
+      line-height: 1.65;
+      max-width: 560px;
+    }
+
+    .card-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.4rem;
+      padding-top: 0.25rem;
+      min-width: 64px;
+    }
+
+    .card-arrow {
+      font-size: 1rem;
+      color: var(--text-lo);
+      transition: transform 0.15s, color 0.15s;
+      line-height: 1;
+    }
+
+    .card-date {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.06em;
+      color: var(--text-lo);
+      white-space: nowrap;
+    }
+
+    /* ---- Coming soon placeholder ---- */
+    .card-placeholder {
+      padding: 1.75rem 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      opacity: 0.45;
+    }
+
+    .placeholder-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text-lo);
+      min-width: 24px;
+    }
+
+    .placeholder-body { flex: 1; }
+
+    .placeholder-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.5rem;
+      border-radius: 2px;
+      display: inline-block;
+      margin-bottom: 0.6rem;
+    }
+
+    .placeholder-title {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: var(--text-mid);
+      letter-spacing: -0.01em;
+    }
+
+    .placeholder-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.5rem;
+      border-radius: 2px;
+    }
+
+    /* ---- Footer ---- */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 0;
+      margin-top: auto;
+    }
+
+    .footer-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .footer-inner span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+      color: var(--text-lo);
+    }
+
+    /* ---- Animations ---- */
+    @media (prefers-reduced-motion: no-preference) {
+      .hero { animation: none; }
+      .articles-section { animation: none; }
+    }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 600px) {
+      html { font-size: 15px; }
+      .hero { padding: 2.5rem 0 2rem; flex-direction: column; align-items: flex-start; }
+      .hero-meta { text-align: left; }
+      .card-right { display: none; }
+      .header-inner { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <span class="site-label"><span>Shashank</span> &middot; Engineering Articles</span>
+    <span class="site-label">Technical Deep Dives</span>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <div class="hero">
+      <div class="hero-left">
+        <h1>The explanation you had to find the hard way.</h1>
+        <p class="hero-sub">I write for my past self, who was a bit slow on the uptake. Git, AI systems, software design, and the tools that quietly make everything harder or easier.</p>
+        <div class="hero-meta">
+          <div>Building things by day.</div>
+          <div>Writing so others don't have to figure it out alone.</div>
+          <div>Occasional over-explainer.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="articles-section">
+      <div class="section-header">
+        <span class="section-title">All articles</span>
+      </div>
+
+      <div class="article-list">
+
+        <!-- Article 01: Git Worktree -->
+        <a class="article-card" href="git-worktree.html">
+          <span class="card-num">01</span>
+          <div class="card-body">
+            <div class="card-tags">
+              <span class="card-tag">Git</span>
+              <span class="card-meta-inline">6 min read</span>
+            </div>
+            <div class="card-title">The Git Feature Nobody Teaches</div>
+            <p class="card-desc">Git worktree has been in Git since 2.5 and most developers have never used it. Work on two branches simultaneously without losing your context.</p>
+          </div>
+          <div class="card-right">
+            <span class="card-arrow">&#8599;</span>
+            <span class="card-date">May 2026</span>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <span>Written because someone had to.</span>
+    <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;color:var(--text-lo)">Spot an error or have thoughts? Reach out.</span>
+      <a href="https://www.linkedin.com/in/shashank-patwardhan-336a9675/" target="_blank" rel="noopener" style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;color:var(--text-lo);text-decoration:none;display:flex;align-items:center;gap:0.4rem;transition:color 0.15s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-lo)'">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+        LinkedIn
+      </a>
+      <a href="mailto:patwardhanshank@gmail.com" style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;color:var(--text-lo);text-decoration:none;display:flex;align-items:center;gap:0.4rem;transition:color 0.15s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-lo)'">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        patwardhanshank@gmail.com
+      </a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

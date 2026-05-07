@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Stop Blaming the Model</title>
+
+<!-- SEO -->
+<meta name="description" content="A technical deep dive on harnesses vs models in AI systems. Covers inference, costing, RAG, observability, prompt management, and multi-model routing with code examples in Python and Next.js." />
+<meta name="author" content="Shashank" />
+<meta name="keywords" content="AI harness, LLM infrastructure, RAG, prompt management, model routing, Claude, AI engineering" />
+
+<!-- Open Graph (Facebook, LinkedIn, Slack) -->
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Stop Blaming the Model" />
+<meta property="og:description" content="Why most AI system failures trace back to the harness, and what you can actually do about it." />
+<meta property="og:site_name" content="Technical Deep Dive" />
+<meta property="og:url" content="https://YOUR-USERNAME.github.io/YOUR-REPO/" />
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Stop Blaming the Model" />
+<meta name="twitter:description" content="Why most AI system failures trace back to the harness, and what you can actually do about it." />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f4f5f9;
+    --surface: #ffffff;
+    --surface2: #eef0f7;
+    --border: #d4d8ee;
+    --accent: #5046e4;
+    --accent2: #00956f;
+    --accent3: #d94040;
+    --text: #1a1d2e;
+    --text-muted: #4e5272;
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; font-size: 15px; padding: 40px 20px; }
+  .page { max-width: 860px; margin: 0 auto; }
+
+  .header { border-left: 4px solid var(--accent); padding: 24px 28px; background: var(--surface); border-radius: 0 12px 12px 0; margin-bottom: 40px; }
+  .header .tag { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: var(--accent2); text-transform: uppercase; margin-bottom: 10px; }
+  .header h1 { font-size: 2rem; font-weight: 700; line-height: 1.2; color: #1a1d2e; margin-bottom: 12px; }
+  .header .subtitle { color: var(--text-muted); font-size: 14px; }
+
+  .section { margin-bottom: 48px; }
+  .section h2 { font-size: 1.15rem; font-weight: 700; color: #1a1d2e; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section h2 .num { background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.5px; }
+  .section h2 .num.green { background: var(--accent2); }
+  .section h2 .num.red { background: var(--accent3); }
+  .section p { color: var(--text-muted); margin-bottom: 13px; }
+  .section p:last-child { margin-bottom: 0; }
+
+  .diagram-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 30px 20px; margin: 28px 0; }
+  .diagram-title { text-align: center; font-size: 12px; font-weight: 600; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 24px; }
+  svg text { font-family: 'Inter', sans-serif; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13.5px; }
+  th { background: var(--surface2); color: #1a1d2e; font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 2px solid var(--border); }
+  th:first-child { border-radius: 8px 0 0 0; } th:last-child { border-radius: 0 8px 0 0; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-muted); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  td:first-child { color: var(--text); font-weight: 500; }
+
+  .callout { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 0 10px 10px 0; padding: 16px 18px; margin: 18px 0; font-size: 14px; color: var(--text-muted); }
+  .callout.green { border-left-color: var(--accent2); }
+  .callout.red { border-left-color: var(--accent3); }
+  .callout.yellow { border-left-color: #e0a020; }
+  .callout strong { color: var(--text); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .two-col .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .two-col .card h4 { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .two-col .card p { font-size: 13px; color: var(--text-muted); margin: 0; }
+  .card.purple-border { border-top: 3px solid var(--accent); }
+  .card.green-border { border-top: 3px solid var(--accent2); }
+
+  .cost-bars { margin: 16px 0; }
+  .cost-row { margin-bottom: 14px; }
+  .cost-label { font-size: 13px; color: var(--text-muted); margin-bottom: 5px; display: flex; justify-content: space-between; }
+  .cost-label span { color: var(--text); font-weight: 600; }
+  .bar-bg { background: var(--surface2); border-radius: 20px; height: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 20px; }
+
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .pill { font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); color: var(--text-muted); background: var(--surface); }
+  .pill.accent { border-color: var(--accent); color: var(--accent); }
+  .pill.green { border-color: var(--accent2); color: var(--accent2); }
+
+  .framework-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+  .fw-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .fw-card h4 { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .fw-card .fw-tag { font-size: 11px; font-weight: 600; color: var(--accent2); background: #e6f7f2; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 8px; }
+  .fw-card .fw-tag.yellow { color: #9a6800; background: #fff4cc; }
+  .fw-card .fw-tag.red { color: var(--accent3); background: #fdeaea; }
+  .fw-card p { font-size: 12px; color: var(--text-muted); margin: 0; }
+
+  .routing { display: flex; align-items: center; justify-content: center; gap: 0; margin: 20px 0; flex-wrap: wrap; }
+  .r-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 12px; font-weight: 600; text-align: center; min-width: 90px; }
+  .r-box.purple { border-color: var(--accent); color: var(--accent); }
+  .r-box.green { border-color: var(--accent2); color: var(--accent2); }
+  .r-box.red { border-color: var(--accent3); color: var(--accent3); }
+  .r-arrow { color: var(--text-muted); font-size: 18px; padding: 0 6px; }
+
+  pre { background: #1a1d2e; border-radius: 10px; padding: 18px 20px; overflow-x: auto; margin: 16px 0; border: 1px solid #2e3250; font-size: 12.5px; line-height: 1.7; }
+  pre code { font-family: 'JetBrains Mono', monospace; background: none; padding: 0; color: #c9d1f0; font-size: inherit; }
+  .tok-comment { color: #5c6690; }
+  .tok-str     { color: #79e8b8; }
+  .tok-fn      { color: #61afef; }
+  .tok-kw      { color: #e06c75; }
+  .tok-num     { color: #e5c07b; }
+  .code-label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; margin-top: 16px; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+  .highlight { color: var(--accent2); font-weight: 600; }
+  code { font-family: 'JetBrains Mono', monospace; background: var(--surface2); padding: 2px 7px; border-radius: 4px; font-size: 12.5px; color: var(--accent); }
+
+  .footer { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 600px) {
+    .two-col, .framework-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="tag">Technical Deep Dive · AI Systems</div>
+    <h1>Stop Blaming the Model</h1>
+    <div class="subtitle">Why most AI system failures trace back to the harness, and what you can actually do about it.</div>
+    <div style="margin-top: 16px; font-size: 13px; color: var(--text-muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <span style="color: var(--text); font-weight: 600;">By Shashank</span>
+      <span style="opacity: 0.4;">·</span>
+      <span>10 min read</span>
+      <span style="opacity: 0.4;">·</span>
+      <span>Updated April 2026</span>
+    </div>
+  </div>
+
+  <!-- 01 INTRODUCTION -->
+  <div class="section">
+    <h2><span class="num">01</span> Introduction</h2>
+    <p>Every time a new model ships, the same conversation kicks off. Which benchmark did it top? How does it compare to the last one? Should we migrate? The model becomes the whole story and everything else gets treated as a footnote.</p>
+    <p>That framing is wrong. In most production AI systems, the model accounts for only a fraction of what makes or breaks the user experience. The rest is handled by the <span class="highlight">harness</span>: the infrastructure that wraps the model, feeds it context, manages prompts, routes requests, handles failures, enforces guardrails, and logs everything that happens.</p>
+    <p>A good model inside a well-built harness will consistently outperform a frontier model wired up carelessly. This article walks through what models and harnesses actually are, how they differ, how inference and cost work, and why harness engineering deserves at least as much strategic attention as model selection.</p>
+  </div>
+
+  <!-- 02 WHAT IS A MODEL -->
+  <div class="section">
+    <h2><span class="num">02</span> What is a Model?</h2>
+    <p>A model is a large neural network, almost always a transformer, trained on massive amounts of text to predict and generate language. Its behaviour comes down to three things: the architecture (layers, attention heads, parameter count), the training data (what knowledge it absorbed), and the fine-tuning applied afterward (how it behaves in specific contexts).</p>
+    <p>The critical thing to understand is that a model is <strong>stateless</strong>. Send it a prompt, get a completion. It has no memory of previous calls, no awareness of your application, and no stake in whether your system works well. It responds to whatever tokens arrive in the request window and nothing more. Any sense of continuity or context in a conversation is an illusion constructed entirely by the harness.</p>
+    <p>Models also have a fixed <strong>context window</strong>: a hard limit on how many tokens they can process in a single call. Managing what fits inside that window, what gets summarised, and what gets dropped is a harness responsibility.</p>
+  </div>
+
+  <!-- 03 WHAT IS A HARNESS -->
+  <div class="section">
+    <h2><span class="num">03</span> What is a Harness?</h2>
+    <p>A harness is the complete software layer that sits between your application and the model API. It handles everything the model cannot do on its own: assembling prompts, injecting retrieved context, maintaining conversation history, validating outputs, retrying failed calls, routing between models, and reporting on what happened.</p>
+    <p>Think of the model as a powerful engine. The harness is everything else in the vehicle: the steering, fuel system, brakes, and dashboard. You can drop in a more powerful engine, but if the rest of the vehicle is poorly built you are still not going anywhere fast. The analogy holds precisely because engines and models share the same trait: they do exactly what physics or mathematics tells them to, and the quality of what you get out depends almost entirely on what you put in.</p>
+    <p>In practice, harnesses range from thin wrappers that handle prompt assembly and retries, all the way to full orchestration platforms that manage multi-step agent workflows, tool use, memory, and real-time retrieval pipelines. The complexity of the harness should scale with the complexity of what the product needs to do.</p>
+    <div class="callout green">
+      <strong>Key insight:</strong> Most of what users experience as "AI quality" (relevance, consistency, speed, safety) is shaped at the harness layer, not inside the model weights.
+    </div>
+    <div class="pills">
+      <span class="pill green">Prompt Assembly</span>
+      <span class="pill green">Memory & Context</span>
+      <span class="pill green">Retrieval (RAG)</span>
+      <span class="pill green">Output Parsing</span>
+      <span class="pill green">Retry Logic</span>
+      <span class="pill green">Guardrails</span>
+      <span class="pill green">Observability</span>
+      <span class="pill green">Model Routing</span>
+    </div>
+  </div>
+
+  <!-- 04 DIAGRAM -->
+  <div class="section">
+    <h2><span class="num">04</span> Architecture Overview</h2>
+    <p>The diagram below shows how a typical production harness is layered. The model sits at the centre, wrapped by the core harness logic, which is in turn wrapped by the outer shell handling security and observability. The application layer sits on top of all of it.</p>
+    <div class="diagram-wrap">
+      <div class="diagram-title">Harness Architecture, Layers Around a Model</div>
+      <svg viewBox="0 0 780 420" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;display:block;margin:0 auto;">
+        <rect x="10" y="10" width="760" height="400" rx="16" fill="#f0f1fa" stroke="#c4c8e8" stroke-width="1.5"/>
+        <text x="30" y="34" fill="#7a7faa" font-size="11" font-weight="600" letter-spacing="1">APPLICATION LAYER</text>
+        <rect x="30" y="44" width="720" height="356" rx="12" fill="#e8f5f0" stroke="#a8d8c8" stroke-width="1.5"/>
+        <text x="50" y="65" fill="#00956f" font-size="11" font-weight="600" letter-spacing="1">HARNESS, OUTER SHELL</text>
+        <rect x="50" y="72" width="680" height="36" rx="8" fill="#d4eee6" stroke="#a8d8c8" stroke-width="1"/>
+        <text x="390" y="95" fill="#007a5a" font-size="12" font-weight="600" text-anchor="middle">🛡 Guardrails · Input Sanitization · PII Redaction · Content Filtering</text>
+        <rect x="50" y="118" width="680" height="240" rx="10" fill="#eeeeff" stroke="#c0bff0" stroke-width="1.5"/>
+        <text x="70" y="138" fill="#5046e4" font-size="11" font-weight="600" letter-spacing="1">HARNESS, CORE</text>
+        <rect x="68" y="146" width="196" height="76" rx="8" fill="#ffffff" stroke="#5046e4" stroke-width="1"/>
+        <text x="166" y="168" fill="#5046e4" font-size="11" font-weight="700" text-anchor="middle">📝 Prompt Management</text>
+        <text x="166" y="185" fill="#7a7faa" font-size="10" text-anchor="middle">Templates · Versioning</text>
+        <text x="166" y="200" fill="#7a7faa" font-size="10" text-anchor="middle">Injection Safety</text>
+        <rect x="292" y="146" width="196" height="76" rx="8" fill="#ffffff" stroke="#5046e4" stroke-width="1"/>
+        <text x="390" y="168" fill="#5046e4" font-size="11" font-weight="700" text-anchor="middle">🔍 RAG Pipeline</text>
+        <text x="390" y="185" fill="#7a7faa" font-size="10" text-anchor="middle">Chunking · Embedding</text>
+        <text x="390" y="200" fill="#7a7faa" font-size="10" text-anchor="middle">Vector Search · Reranking</text>
+        <rect x="516" y="146" width="196" height="76" rx="8" fill="#ffffff" stroke="#5046e4" stroke-width="1"/>
+        <text x="614" y="168" fill="#5046e4" font-size="11" font-weight="700" text-anchor="middle">🧠 Memory &amp; Context</text>
+        <text x="614" y="185" fill="#7a7faa" font-size="10" text-anchor="middle">History · Summarization</text>
+        <text x="614" y="200" fill="#7a7faa" font-size="10" text-anchor="middle">Window Management</text>
+        <line x1="166" y1="222" x2="166" y2="244" stroke="#5046e4" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <line x1="390" y1="222" x2="390" y2="244" stroke="#5046e4" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <line x1="614" y1="222" x2="614" y2="244" stroke="#5046e4" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <rect x="200" y="244" width="380" height="44" rx="8" fill="#5046e4" stroke="#3a32c0" stroke-width="1.5"/>
+        <text x="390" y="262" fill="#ffffff" font-size="11.5" font-weight="700" text-anchor="middle">⚡ Model Router + Fallback Logic</text>
+        <text x="390" y="278" fill="#d0cefc" font-size="10" text-anchor="middle">Cost Optimization · Retry · Latency Routing</text>
+        <line x1="390" y1="288" x2="390" y2="308" stroke="#5046e4" stroke-width="2" marker-end="url(#arr)"/>
+        <rect x="270" y="308" width="240" height="44" rx="10" fill="#1a1d2e" stroke="#5046e4" stroke-width="2"/>
+        <text x="390" y="326" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">🤖 MODEL</text>
+        <text x="390" y="344" fill="#a0a4c8" font-size="10" text-anchor="middle">Claude / GPT / Gemini / OSS</text>
+        <rect x="50" y="368" width="680" height="36" rx="8" fill="#d4eee6" stroke="#a8d8c8" stroke-width="1"/>
+        <text x="390" y="391" fill="#007a5a" font-size="12" font-weight="600" text-anchor="middle">📊 Observability · Token Logging · Latency Tracing · Error Tracking</text>
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+            <path d="M0,0 L0,8 L8,4 z" fill="#5046e4"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+    <p>Each layer has a specific job and a clear boundary. The outer shell does not know about retrieval logic. The core does not deal with logging infrastructure. That separation is intentional and important: it is what makes each layer independently testable, replaceable, and debuggable.</p>
+  </div>
+
+  <!-- 05 KEY DIFFERENCES -->
+  <div class="section">
+    <h2><span class="num">05</span> Key Differences</h2>
+    <p>Now that both concepts are clear, it is worth putting them side by side. The comparison below covers the dimensions that matter most when making architectural decisions.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th style="color:#5046e4">Model</th>
+          <th style="color:#00956f">Harness</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>What it is</td><td>Pre-trained neural network</td><td>Software infrastructure wrapping the model</td></tr>
+        <tr><td>State</td><td>Stateless, no memory between calls</td><td>Stateful, manages history, sessions, context</td></tr>
+        <tr><td>Customization</td><td>Via fine-tuning (expensive, slow)</td><td>Via code changes (fast, iterative)</td></tr>
+        <tr><td>Output quality</td><td>Bounded by training and capabilities</td><td>Shaped by prompts, retrieval, and post-processing</td></tr>
+        <tr><td>Cost control</td><td>Fixed pricing per token</td><td>Routing, caching, batching reduce total spend</td></tr>
+        <tr><td>Failure handling</td><td>Returns errors or bad completions</td><td>Retries, fallbacks, graceful degradation</td></tr>
+        <tr><td>Vendor lock-in</td><td>Tied to provider's API format</td><td>Abstraction layer enables model swapping</td></tr>
+        <tr><td>Time to change</td><td>Weeks to months (retraining)</td><td>Hours to days (code iteration)</td></tr>
+        <tr><td>Observability</td><td>Black box</td><td>Full logging, tracing, alerting</td></tr>
+        <tr><td>Knowledge freshness</td><td>Fixed at training cutoff</td><td>Kept current via RAG and tool use</td></tr>
+      </tbody>
+    </table>
+    <p>The most important row is "Time to change." Model retraining is a heavyweight operation that takes weeks, costs significant compute, and carries real risk of regression. Harness changes ship in a sprint. That asymmetry is why investing in harness quality pays off so much faster than waiting for a better model.</p>
+  </div>
+
+  <!-- 06 MODEL INFERENCE -->
+  <div class="section">
+    <h2><span class="num">06</span> Model Inference</h2>
+    <p>Inference is what happens when your harness sends a prompt to the model and waits for a response. The model encodes the input tokens, processes them through its transformer layers, and autoregressively generates output tokens one at a time. Two numbers define the user experience here: <strong>time-to-first-token (TTFT)</strong>, which is how long before anything starts streaming back, and <strong>tokens per second (TPS)</strong>, which is how fast the rest arrives after that.</p>
+    <p>Larger models have higher TTFT and lower TPS compared to smaller ones. That tradeoff is real and it matters. For a conversational interface, TTFT dominates perceived speed. For a batch processing job, TPS and throughput matter more.</p>
+
+    <div class="two-col">
+      <div class="card purple-border">
+        <h4>Synchronous Inference</h4>
+        <p>The harness blocks until the full completion arrives. Simpler to implement, appropriate for backend pipelines where latency is not user-visible.</p>
+      </div>
+      <div class="card green-border">
+        <h4>Streaming Inference</h4>
+        <p>Tokens are delivered as a server-sent event stream. Dramatically improves perceived responsiveness in chat interfaces. Requires the harness to handle partial responses and stream reassembly.</p>
+      </div>
+    </div>
+
+    <p><strong>Batching</strong> is another lever worth understanding. Some model providers support request batching, where multiple independent prompts are processed together in a single GPU pass. This improves throughput significantly for asynchronous workloads like document processing or scheduled evaluation jobs, though it adds latency per individual request and requires the harness to manage batch assembly and result routing.</p>
+    <div class="callout">
+      <strong>Harness responsibility:</strong> Timeout handling, retry on transient errors, streaming buffer management, and the decision to use sync vs. async vs. batched inference are all harness concerns. The model has no opinion on any of this.
+    </div>
+  </div>
+
+  <!-- 07 COSTING -->
+  <div class="section">
+    <h2><span class="num">07</span> Costing Breakdown</h2>
+    <p>AI costs are measured in tokens: roughly 0.75 words per token, or about 4 characters. Providers charge separately for input and output tokens, with output tokens costing significantly more because generation is computationally heavier than encoding. But the model API bill is only one part of what it actually costs to run an AI system in production.</p>
+    <div class="cost-bars">
+      <div class="cost-row">
+        <div class="cost-label">Model API (input + output tokens) <span>~40–55%</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:50%;background:linear-gradient(90deg,#5046e4,#9b93ff)"></div></div>
+      </div>
+      <div class="cost-row">
+        <div class="cost-label">RAG / Embedding & Vector DB queries <span>~15–20%</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:18%;background:linear-gradient(90deg,#00956f,#00d4aa)"></div></div>
+      </div>
+      <div class="cost-row">
+        <div class="cost-label">Prompt bloat (over-stuffed context, no caching) <span>~10–20%</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:15%;background:linear-gradient(90deg,#d94040,#ff9f9f)"></div></div>
+      </div>
+      <div class="cost-row">
+        <div class="cost-label">Retries, failed calls, redundant requests <span>~5–15%</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:10%;background:linear-gradient(90deg,#e0a020,#ffd080)"></div></div>
+      </div>
+      <div class="cost-row">
+        <div class="cost-label">Infrastructure (logging, monitoring, storage) <span>~5–10%</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:7%;background:linear-gradient(90deg,#3a7bd5,#6faaff)"></div></div>
+      </div>
+    </div>
+    <p>Notice that items 2 through 5 are entirely harness concerns. Teams that obsess over model pricing while ignoring prompt bloat and cache misses are optimising the wrong variable. <strong>Prompt caching</strong>, where the provider stores repeated system prompt tokens across calls rather than re-encoding them each time, can cut costs by 40–70% on high-traffic systems. <strong>Output caching</strong> at the harness layer can go further still for use cases with predictable or repeated queries. Neither requires a model change.</p>
+    <div class="callout yellow">
+      <strong>Worked example:</strong> A system sending 1M requests/day with a 500-token system prompt, no caching, and all traffic routed to a frontier model will spend roughly 5x more on tokens than the same system with prompt caching enabled and 60% of traffic routed to a smaller model. The product output is nearly identical. The cost is not.
+    </div>
+  </div>
+
+  <!-- 08 PROMPT MANAGEMENT -->
+  <div class="section">
+    <h2><span class="num">08</span> Prompt Management</h2>
+    <p>Prompts are the primary interface between the harness and the model, and unlike model weights, they are fully under your control. They also change constantly. A good prompt management setup treats them exactly like application code: versioned, tested, reviewed, and deployed deliberately.</p>
+    <p><strong>Templating</strong> separates static instructions from dynamic variables. The harness assembles the final prompt at runtime by injecting user context, retrieved chunks, and conversation history into predefined slots using something like <code>{{retrieved_context}}</code>. This keeps prompts readable, testable, and free of string concatenation bugs scattered across the codebase.</p>
+    <p><strong>Versioning</strong> means a single word change can be traced, rolled back, and A/B tested against the previous version. Teams that hardcode prompts inline lose track of what is actually running in production within weeks. At scale, prompt regressions are real and they are silent: the model keeps responding, but quality drifts.</p>
+    <p><strong>Prompt injection</strong> is a security concern most prevalent in user-facing systems, where malicious input is crafted to override or escape system instructions. Input sanitization at the harness layer catches this before it reaches the model. It is not something the model itself can reliably defend against.</p>
+    <div class="code-label">Python: Versioned prompt template with safe variable injection</div>
+<pre><code><span class="tok-comment"># prompts/v3_assistant.py  :: versioned, importable, testable</span>
+
+SYSTEM_TEMPLATE = <span class="tok-str">"""You are a support assistant for {company_name}.
+Always respond in {language}.
+Use only the context below to answer. If unsure, say so.
+
+Context:
+{retrieved_context}
+"""</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">assemble_prompt</span>(query: str, context: str, cfg: dict) -> list:
+    <span class="tok-comment"># sanitize_input strips prompt injection attempts before assembly</span>
+    safe_query = <span class="tok-fn">sanitize_input</span>(query)
+    system = SYSTEM_TEMPLATE.<span class="tok-fn">format</span>(
+        company_name      = cfg[<span class="tok-str">"company"</span>],
+        language          = cfg[<span class="tok-str">"lang"</span>],
+        retrieved_context = context or <span class="tok-str">"No relevant context found."</span>
+    )
+    <span class="tok-kw">return</span> [
+        {<span class="tok-str">"role"</span>: <span class="tok-str">"system"</span>, <span class="tok-str">"content"</span>: system},
+        {<span class="tok-str">"role"</span>: <span class="tok-str">"user"</span>,   <span class="tok-str">"content"</span>: safe_query}
+    ]</code></pre>
+    <div class="callout">
+      <strong>Rule of thumb:</strong> If your prompts live in string literals scattered across your codebase, you do not have a prompt management system. You have a liability.
+    </div>
+  </div>
+
+  <!-- 09 RAG -->
+  <div class="section">
+    <h2><span class="num">09</span> RAG, Retrieval-Augmented Generation</h2>
+    <p>Models are trained on historical data with a fixed knowledge cutoff. Ask them about something outside that window and they will hallucinate, not because the model is bad, but because it genuinely does not know. RAG solves this by having the harness retrieve relevant information at query time and inject it into the prompt as grounded context before the model ever sees the question.</p>
+    <p>The full pipeline is a harness responsibility. It covers: <strong>chunking</strong> source documents into retrievable units, <strong>embedding</strong> those chunks into a vector space using an embedding model, storing them in a <strong>vector database</strong> (Pinecone, Weaviate, and pgvector are common choices), and at query time: embedding the user's question, finding the most semantically similar chunks, reranking them by relevance, and injecting the top results into the prompt context window.</p>
+    <p>Poor retrieval design is the most common root cause of unexpectedly bad answers in enterprise AI systems. The model gets blamed, but in most cases the issue is what the harness fed it. Wrong chunks, insufficient context, or no reranking step are all harness problems. Better retrieval almost always beats a better model when the bottleneck is knowledge grounding.</p>
+    <div class="code-label">Python: Minimal RAG pipeline with hybrid retrieval</div>
+<pre><code><span class="tok-kw">def</span> <span class="tok-fn">rag_pipeline</span>(query: str, cfg: dict) -> str:
+    <span class="tok-comment"># 1. Embed query for dense (semantic) retrieval</span>
+    q_vec  = embedder.<span class="tok-fn">embed</span>(query)
+
+    <span class="tok-comment"># 2. Hybrid search: dense vector + sparse BM25 keyword match</span>
+    dense  = vector_db.<span class="tok-fn">search</span>(q_vec,  top_k=<span class="tok-num">10</span>)
+    sparse = bm25_index.<span class="tok-fn">search</span>(query, top_k=<span class="tok-num">10</span>)
+
+    <span class="tok-comment"># 3. Fuse and rerank candidates, keep top 3</span>
+    chunks = reranker.<span class="tok-fn">rerank</span>(query, dense + sparse)[:<span class="tok-num">3</span>]
+
+    <span class="tok-comment"># 4. Assemble grounded prompt</span>
+    context  = <span class="tok-str">"\n---\n"</span>.<span class="tok-fn">join</span>(c.text <span class="tok-kw">for</span> c <span class="tok-kw">in</span> chunks)
+    messages = <span class="tok-fn">assemble_prompt</span>(query, context, cfg)
+
+    <span class="tok-comment"># 5. Hand off to model. Harness owns this boundary.</span>
+    <span class="tok-kw">return</span> model_client.<span class="tok-fn">complete</span>(messages)</code></pre>
+    <div class="callout green">
+      <strong>Why hybrid retrieval matters:</strong> Dense vector search is good at semantic similarity but misses exact terminology matches. BM25 keyword search catches exact terms but misses paraphrase. Combining both and reranking the merged candidates gives meaningfully better recall, especially for technical and domain-specific content.
+    </div>
+  </div>
+
+  <!-- 10 CONTEXT AND MEMORY -->
+  <div class="section">
+    <h2><span class="num">10</span> Context & Memory Management</h2>
+    <p>Because models are stateless, any sense of "memory" in a conversation is something the harness constructs and maintains. On every call, the harness decides what to include in the context window and what to leave out. That decision directly affects both output quality and cost.</p>
+    <p>For short conversations, the harness can simply append each message to a running history and pass the whole thing in. But context windows have limits, and token costs scale linearly with context size. For long conversations, a naive approach quietly inflates costs and eventually hits the window ceiling, at which point the model loses access to early context entirely.</p>
+    <p>Production systems handle this with a few standard patterns. <strong>Sliding window</strong> keeps only the last N turns in context. <strong>Summarization</strong> compresses older turns into a rolling summary that preserves meaning at a fraction of the token cost. <strong>Long-term memory stores</strong> persist user-level facts (preferences, history, prior decisions) outside the model entirely and inject them selectively based on relevance to the current query.</p>
+    <div class="two-col">
+      <div class="card purple-border">
+        <h4>Short-term Context</h4>
+        <p>Recent conversation turns, retrieved chunks, and the current system prompt. Lives entirely inside the context window. Managed per-request by the harness.</p>
+      </div>
+      <div class="card green-border">
+        <h4>Long-term Memory</h4>
+        <p>Persistent user facts, past decisions, and domain knowledge stored outside the model in a database or vector store. Injected selectively when relevant.</p>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>Watch out for:</strong> Silent context truncation. If your harness trims old messages without logging what was dropped, you lose the ability to debug why the model "forgot" something important mid-conversation.
+    </div>
+  </div>
+
+  <!-- 11 OBSERVABILITY -->
+  <div class="section">
+    <h2><span class="num">11</span> Observability & Monitoring</h2>
+    <p>AI systems fail in ways that traditional application monitoring will not catch. A response can be syntactically valid and semantically wrong at the same time. Your error rate dashboard shows zero issues. Your users get a confidently wrong answer. Standard uptime and HTTP metrics are not sufficient here.</p>
+    <p>A well-instrumented harness captures: token counts (input, output, cached) per request; latency broken down by pipeline stage (retrieval, prompt assembly, inference, parsing); model version and routing decisions; prompt snapshots for debugging; and output quality signals like schema validation failures, guardrail triggers, and refusal rates.</p>
+    <p>This data answers the questions production teams actually ask. Why did response quality drop last Tuesday? Which prompt version performs better on edge cases? Is cost per user creeping up? Is the retrieval step adding latency disproportionate to the quality improvement it provides? Without harness-level telemetry, these questions turn into multi-hour archaeology projects with no guaranteed answer at the end.</p>
+    <p>Tracing is particularly valuable in multi-step pipelines. A single user request may trigger retrieval, reranking, prompt assembly, model inference, output validation, and a second model call for formatting. Without distributed traces, a latency spike anywhere in that chain looks identical from the outside.</p>
+    <div class="callout red">
+      <strong>Common mistake:</strong> Logging only errors. In AI systems, the most expensive failures are wrong-but-valid outputs that pass silently. Logging full request/response pairs (with PII stripped) is table stakes for any production system. If storage cost is a concern, sample aggressively but always log 100% of guardrail triggers and parse failures.
+    </div>
+  </div>
+
+  <!-- 12 HARNESS ENGINEERING -->
+  <div class="section">
+    <h2><span class="num">12</span> Harness Engineering & Multi-Model Routing</h2>
+    <p>Harness engineering is the work of building and evolving the infrastructure layer of an AI system. It sits at the intersection of software engineering, systems design, and AI product development. Teams that treat it as an afterthought, wiring prompts directly to model APIs inside application controllers, nearly always rebuild it from scratch when they hit production scale.</p>
+    <p>The core engineering practices: design for <strong>modularity</strong> so each pipeline stage (retrieval, prompt assembly, inference, parsing) can be replaced or tested independently. Implement <strong>graceful degradation</strong> so the system falls back to a cached response or a lighter model when the primary one is unavailable. Enforce <strong>output schema validation</strong> so downstream code does not silently break when the model returns malformed JSON. Build <strong>rate limit handling</strong> with exponential backoff and jitter to avoid thundering herd failures under load spikes.</p>
+    <p><strong>Eval suites</strong> deserve a specific callout. Prompt changes are code changes. Every significant prompt update should run against a curated set of test cases before it ships. Evals catch regressions that manual testing misses and give the team confidence to iterate quickly. Without them, prompt engineering becomes superstition.</p>
+    <p>A mature harness also does not commit to a single model. An intent classifier at the routing layer determines whether a request needs deep reasoning (route to a frontier model), is a simple extraction task (route to something fast and cheap), or requires real-time information (route to a web-search-augmented model). This logic lives entirely in the harness, meaning you can retune it without touching any product code.</p>
+    <div class="routing">
+      <div class="r-box purple">Incoming<br/>Request</div>
+      <div class="r-arrow">→</div>
+      <div class="r-box" style="border-color:#e0a020;color:#9a6800;">Intent<br/>Classifier</div>
+      <div class="r-arrow">→</div>
+      <div class="r-box green">Haiku<br/>(fast/cheap)</div>
+      <div class="r-arrow" style="font-size:11px;color:#aaa;padding:0 4px;">/</div>
+      <div class="r-box purple">Sonnet<br/>(balanced)</div>
+      <div class="r-arrow" style="font-size:11px;color:#aaa;padding:0 4px;">/</div>
+      <div class="r-box red">Opus<br/>(complex)</div>
+    </div>
+    <p>In a typical full-stack application, routing logic often sits at the application boundary itself. Here is the same pattern expressed as a Next.js API route, which is where many products actually call into their harness from a web frontend.</p>
+    <div class="code-label">Next.js API route: Intent-based router with fallback</div>
+<pre><code><span class="tok-comment">// app/api/ask/route.ts :: Next.js App Router API endpoint</span>
+<span class="tok-kw">import</span> { NextRequest, NextResponse } <span class="tok-kw">from</span> <span class="tok-str">'next/server'</span>;
+<span class="tok-kw">import</span> { classifyIntent, callModel, RateLimitError, TimeoutError } <span class="tok-kw">from</span> <span class="tok-str">'@/lib/harness'</span>;
+
+<span class="tok-comment">// Routing table lives here, not scattered across business logic</span>
+<span class="tok-kw">const</span> ROUTING_RULES: Record&lt;string, string&gt; = {
+  simple_extraction: <span class="tok-str">'claude-haiku-4-5-20251001'</span>,    <span class="tok-comment">// fast, cheap</span>
+  qa_with_context:   <span class="tok-str">'claude-sonnet-4-6'</span>,            <span class="tok-comment">// balanced</span>
+  complex_reasoning: <span class="tok-str">'claude-opus-4-6'</span>,              <span class="tok-comment">// deep tasks</span>
+};
+
+<span class="tok-kw">export</span> <span class="tok-kw">async</span> <span class="tok-kw">function</span> <span class="tok-fn">POST</span>(req: NextRequest) {
+  <span class="tok-kw">const</span> { query } = <span class="tok-kw">await</span> req.<span class="tok-fn">json</span>();
+
+  <span class="tok-kw">const</span> intent = <span class="tok-kw">await</span> <span class="tok-fn">classifyIntent</span>(query);           <span class="tok-comment">// lightweight classifier</span>
+  <span class="tok-kw">const</span> model  = ROUTING_RULES[intent] ?? <span class="tok-str">'claude-sonnet-4-6'</span>;
+
+  <span class="tok-kw">try</span> {
+    <span class="tok-kw">const</span> result = <span class="tok-kw">await</span> <span class="tok-fn">callModel</span>(model, query);
+    <span class="tok-kw">return</span> NextResponse.<span class="tok-fn">json</span>({ result });
+  } <span class="tok-kw">catch</span> (err) {
+    <span class="tok-kw">if</span> (err <span class="tok-kw">instanceof</span> RateLimitError || err <span class="tok-kw">instanceof</span> TimeoutError) {
+      <span class="tok-comment">// Degrade gracefully, never fail silently</span>
+      console.<span class="tok-fn">warn</span>(<span class="tok-str">`Falling back from ${model} to haiku`</span>);
+      <span class="tok-kw">const</span> result = <span class="tok-kw">await</span> <span class="tok-fn">callModel</span>(<span class="tok-str">'claude-haiku-4-5-20251001'</span>, query);
+      <span class="tok-kw">return</span> NextResponse.<span class="tok-fn">json</span>({ result, fallback: <span class="tok-kw">true</span> });
+    }
+    <span class="tok-kw">throw</span> err;
+  }
+}</code></pre>
+    <p>Routing traffic intelligently across model tiers can reduce inference costs by 30–60% compared to sending everything to a frontier model, while maintaining or improving overall quality. Simpler queries are better served by models tuned for speed rather than being over-served by a frontier model built for depth.</p>
+  </div>
+
+  <!-- 13 HARNESS SELECTION -->
+  <div class="section">
+    <h2><span class="num">13</span> Harness Selection & Its Impact</h2>
+    <p>Before getting into tooling, one thing is worth stating clearly: a harness does not have to be a named framework or a product you install. <strong>Any code that sits between your application and the model API is a harness.</strong> A 200-line Python module that assembles prompts, injects retrieved context, retries failed calls, and validates JSON output is a harness. A few utility functions that manage conversation history and call the Anthropic API directly is a harness. The moment you write code that shapes what goes into a model call or processes what comes out, you are doing harness engineering, whether you call it that or not. The decision is not "do I use a harness" but "how much of it do I build myself versus adopt from existing tools."</p>
+    <p>With that framing in mind, here are the tools and approaches worth knowing, grouped honestly by what they are actually good for:</p>
+    <div class="framework-grid">
+      <div class="fw-card">
+        <h4>LangChain</h4>
+        <div class="fw-tag">Most Popular</div>
+        <p>Broad ecosystem, huge community, lots of integrations. Can be verbose and over-abstracted for simple use cases. Best for teams that want convention over configuration.</p>
+      </div>
+      <div class="fw-card">
+        <h4>LlamaIndex</h4>
+        <div class="fw-tag">RAG-focused</div>
+        <p>Purpose-built for retrieval pipelines and document QA. More opinionated than LangChain. Strong choice when RAG is the core of the product.</p>
+      </div>
+      <div class="fw-card">
+        <h4>Semantic Kernel</h4>
+        <div class="fw-tag">Enterprise</div>
+        <p>Microsoft-backed, strong .NET and C# support, designed for enterprise integration. Good fit for teams already in the Azure or Microsoft ecosystem.</p>
+      </div>
+      <div class="fw-card">
+        <h4>Claude Code</h4>
+        <div class="fw-tag">Agentic / Dev</div>
+        <p>Anthropic's agentic coding tool. Internally, it is a harness: it manages context, tool calls, file access, and multi-step reasoning on top of Claude. A good reference architecture for how a production agentic harness is structured.</p>
+      </div>
+      <div class="fw-card">
+        <h4>GitHub Copilot</h4>
+        <div class="fw-tag">IDE-embedded</div>
+        <p>A harness built into the editor. It manages context assembly (open files, cursor position, project structure), prompt construction, and streaming completions. Shows that harness logic does not have to live in a backend service.</p>
+      </div>
+      <div class="fw-card">
+        <h4>OpenCode</h4>
+        <div class="fw-tag yellow">OSS / Terminal</div>
+        <p>An open-source terminal-based coding agent. Worth studying as a harness example because the codebase is readable and shows how tool use, context windows, and model routing are handled without a heavyweight framework.</p>
+      </div>
+      <div class="fw-card">
+        <h4>Custom Stack</h4>
+        <div class="fw-tag yellow">High Control</div>
+        <p>Raw API calls wrapped in your own abstractions. Maximum flexibility and observability. Higher upfront cost, but the right choice when product requirements outgrow what frameworks support cleanly.</p>
+      </div>
+      <div class="fw-card">
+        <h4>No Structure At All</h4>
+        <div class="fw-tag red">Risky Early On</div>
+        <p>Fine for a prototype or a spike. Becomes a maintenance problem quickly. If you are reimplementing retry logic and prompt templating in three different places, you needed a proper harness design three weeks ago.</p>
+      </div>
+    </div>
+    <p>The selection criteria that matter most in practice: provider abstraction (can you swap models without rewriting product code?), observability support (does it expose enough telemetry, or does it hide what is happening?), prompt management (versioning and templating, not just string formatting), streaming support, maintenance health of the project, and the availability of clean escape hatches to raw API calls when the abstraction gets in your way.</p>
+    <div class="callout">
+      <strong>Strategic note:</strong> Investing two extra weeks in harness architecture pays back in months of avoided refactoring. Treat the decision like choosing a database. You can change it later, but the cost is high enough that you really do not want to.
+    </div>
+  </div>
+
+  <!-- 14 CONCLUSION -->
+  <div class="section">
+    <h2><span class="num">14</span> Conclusion</h2>
+    <p>The AI industry has a model fixation. Every major release triggers benchmark comparisons, migration debates, and capability discussions. Those conversations matter, but they are consistently overweighted relative to a more practical question: how well is your harness built?</p>
+    <p>The harness determines what context the model sees, how its outputs are parsed and validated, what happens when it fails, how much each request costs, and whether your team can debug problems the next morning without a four-hour investigation. A model upgrade takes an afternoon. Rearchitecting a poorly designed harness takes months and often requires a production freeze to do safely.</p>
+    <p>The teams building reliable AI products share a recognisable pattern. They treat the harness as a core engineering asset with the same discipline as the rest of their backend. They invest in observability from day one, manage prompts like code, build abstraction layers that preserve the freedom to swap models, and run eval suites before shipping prompt changes. They pick models thoughtfully. But they engineer harnesses obsessively.</p>
+    <div class="callout green">
+      <strong>Key takeaway:</strong> Choose your model carefully. Engineer your harness like your system depends on it, because it does.
+    </div>
+  </div>
+
+  <!-- PROCESS NOTE -->
+  <div style="margin-top: 20px; padding: 18px 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--text-muted);">
+    <div style="font-size: 10.5px; font-weight: 700; letter-spacing: 1.5px; color: var(--text); text-transform: uppercase; margin-bottom: 8px;">A note on process</div>
+    <p style="margin: 0; line-height: 1.7;">This article was drafted iteratively with Claude, Anthropic's AI assistant. The structure, depth, editorial decisions, and factual review were mine. I am sharing it this way because I think being upfront about AI-assisted work matters.</p>
+  </div>
+
+  <div class="footer">
+    <div>Stop Blaming the Model · Technical Deep Dive · April 2026</div>
+    <div style="margin-top: 8px;">Written by <strong style="color: var(--text);">Shashank</strong>. Feedback and corrections welcome.</div>
+  </div>
+
+</div>
+</body>
+</html>

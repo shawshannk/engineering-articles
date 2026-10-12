@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Watch a consumer commit an order, crash before acknowledgment, and receive the same message again. Compare unsafe writes with transactional duplicate handling.">
+<meta property="og:title" content="One message. Two orders. What happened?"><meta property="og:description" content="An interactive queue redelivery explainer. Crash the consumer, enable duplicate handling, and replay the flow."><meta property="og:type" content="article">
+<title>One message. Two orders. · Queue Redelivery Explainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--ink:#1c1917;--muted:#69615b;--line:#e7e5e0;--accent:#b84d08}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 'IBM Plex Sans',sans-serif}a{color:var(--accent)}nav,main,footer{max-width:1020px;margin:auto;padding:22px 26px}header{border-bottom:1px solid var(--line)}nav{display:flex;justify-content:space-between;gap:16px;align-items:center}nav a{text-decoration:none;font-size:13px}.mono{font:11px/1.6 'JetBrains Mono',monospace;letter-spacing:.08em}.eyebrow{color:var(--accent);text-transform:uppercase}.muted{color:var(--muted)}h1,h2,h3{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-.025em;line-height:1.12}h1{font-size:clamp(36px,6vw,60px);margin:18px 0}h1 span{color:var(--accent)}h2{font-size:25px;margin:0 0 12px}h3{font-size:20px;margin:0 0 12px}p{margin:0 0 16px}.hero{padding:25px 0 16px}.lede{max-width:670px;font-size:18px;color:var(--muted)}.lab{background:#211f23;color:#f8f4ef;border-radius:16px;padding:26px;margin:16px 0 30px}.lab .muted{color:#cac0ce}.switches{display:flex;flex-wrap:wrap;gap:12px;border-bottom:1px solid #514955;padding-bottom:20px;margin-top:16px}.switch{display:flex;align-items:center;gap:10px;background:#322d35;padding:11px 14px;border:1px solid #6a5f72;border-radius:6px;font-size:14px;cursor:pointer}.switch:has(input:checked){border-color:#efb47d}.switch input{width:17px;height:17px;accent-color:#df904a}.diagram{width:100%;height:auto;display:block;margin:12px 0 0}.diagram .box{fill:#322d35;stroke:#786b82;stroke-width:1.5}.diagram .focus{stroke:#ffb97c;fill:#453127}.diagram .failed{stroke:#ff9890;fill:#452b30}.diagram text{font-family:'IBM Plex Sans',sans-serif;fill:#f8f4ef}.diagram .small{font-size:15px;fill:#d1c5d6}.diagram .name{font-size:21px;font-weight:500}.diagram .route{stroke:#82718e;stroke-width:2;fill:none}.packet{fill:#ffb574;stroke:#211f23;stroke-width:3}.packet.ack{fill:#93d3b2}.packet.crash{fill:#ff9890}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.metric{background:#302b34;border:1px solid #574b60;padding:12px;border-radius:7px}.metric .mono{color:#cfc0d7;font-size:10px;letter-spacing:.03em}.metric b{display:block;font-size:24px;line-height:1.3;color:#ffd1a5;margin-top:5px}.event{min-height:105px;padding:22px 0 12px}.event h3{font-size:23px;margin-bottom:8px}.event p{font-size:15px;color:#e1d7e5;margin:0}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button{font:14px 'IBM Plex Sans',sans-serif;cursor:pointer;border-radius:6px;padding:10px 16px;border:1px solid #7c6b85;background:transparent;color:inherit}button:disabled{opacity:.4;cursor:default}.primary{background:#ffd1a5;color:#352418;border-color:#ffd1a5}.dots{display:flex;gap:5px;margin:18px 0}.dot{flex:1;height:4px;background:#5a4d63;border-radius:4px}.dot.on{background:#ffb574}.compare{border-top:1px solid #514955;margin-top:20px;padding-top:18px;display:flex;align-items:center;flex-wrap:wrap;gap:14px}.compare p{font-size:13px;color:#cfc0d7;margin:0}.summary{background:#fff1e4;border-left:3px solid var(--accent);padding:20px;margin:24px 0}.summary p{margin:0}.lessons{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin:30px 0}.lessons p{color:var(--muted);font-size:15px}code{font-family:'JetBrains Mono',monospace;font-size:.83em}details{border-top:1px solid var(--line);padding:18px 0}summary{font-weight:500;cursor:pointer}details p{margin:14px 0 0;color:var(--muted);font-size:15px}pre{white-space:pre-wrap;background:#f0ede9;border-radius:7px;padding:18px;font:12px/1.7 'JetBrains Mono',monospace}.sources{font-size:13px;color:var(--muted);margin:20px 0}footer{border-top:1px solid var(--line);font-size:12px;color:var(--muted)}button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #d5823a;outline-offset:5px}@media(max-width:640px){nav,main,footer{padding:18px}nav .mono{font-size:9px}.lab{padding:16px}.metrics{grid-template-columns:1fr 1fr}.lessons{grid-template-columns:1fr;gap:10px}.event{min-height:145px}.diagram{min-height:180px}.switch{font-size:13px}.switches{gap:8px}.controls button{padding:10px 12px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header><nav aria-label="Main"><a href="index.html">← Engineering Articles</a><span class="mono muted">SHASHANK / EXPLAINER 001</span></nav></header>
+<main>
+<section class="hero"><div class="mono eyebrow">Message queues · interactive explainer · 90 seconds</div><h1>One message.<br><span>Two orders. What happened?</span></h1><p class="lede">Your consumer saved the order. Then it crashed before acknowledging the message. The broker doesn’t know the work finished, so it delivers the message again.</p></section>
+<section class="lab" aria-labelledby="lab-title"><h2 id="lab-title">Watch the gap between commit and ACK.</h2><p class="muted" style="font-size:14px;margin:0">One message: <code>msg_1042</code>. Manual acknowledgments. A naive consumer inserts a new order row on every delivery.</p>
+<div class="switches"><label class="switch"><input id="crash" type="checkbox" checked>Crash before acknowledgment</label><label class="switch"><input id="dedupe" type="checkbox">Enable transactional deduplication</label></div><p class="muted" style="font-size:12px;margin:10px 0 0">Changing a switch restarts the flow. The consumer crashes once, then recovers. No real broker or database is connected.</p>
+<svg class="diagram" viewBox="0 0 900 280" role="img" aria-labelledby="diagram-title diagram-desc"><title id="diagram-title">Queue, consumer, and database</title><desc id="diagram-desc">An animated message moves from the queue to the consumer. The consumer writes to the database, then acknowledges the queue. A crash before acknowledgment causes redelivery.</desc>
+<defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7" fill="#82718e"/></marker></defs>
+<path class="route" d="M250 135 H340" marker-end="url(#arrow)"/><path class="route" d="M560 135 H650" marker-end="url(#arrow)"/>
+<path class="route" d="M450 190 V230 H145 V190" marker-end="url(#arrow)"/>
+<text x="280" y="112" class="small">deliver</text><text x="578" y="112" class="small">commit</text><text x="275" y="254" class="small">ACK only after commit</text>
+<rect id="queue-box" class="box" x="35" y="75" width="215" height="115" rx="12"/><text x="142" y="114" text-anchor="middle" class="name">Queue</text><text id="queue-state" x="142" y="151" text-anchor="middle" class="small">Message ready</text>
+<rect id="consumer-box" class="box" x="340" y="75" width="220" height="115" rx="12"/><text x="450" y="114" text-anchor="middle" class="name">Consumer</text><text id="consumer-state" x="450" y="151" text-anchor="middle" class="small">Waiting</text>
+<rect id="db-box" class="box" x="650" y="75" width="215" height="115" rx="12"/><text x="757" y="114" text-anchor="middle" class="name">Database</text><text id="db-state" x="757" y="151" text-anchor="middle" class="small">No order rows</text>
+<circle id="packet" class="packet" r="10" style="transform:translate(142px,50px)"/>
+</svg>
+<div class="metrics" aria-live="polite" aria-atomic="true"><div class="metric"><span class="mono">READY</span><b id="ready">1</b></div><div class="metric"><span class="mono">UNACKNOWLEDGED</span><b id="unacked">0</b></div><div class="metric"><span class="mono">DELIVERIES</span><b id="deliveries">0</b></div><div class="metric"><span class="mono">ORDER ROWS</span><b id="orders">0</b></div></div>
+<div class="event" aria-live="polite" aria-atomic="true"><h3 id="event-title"></h3><p id="event-text"></p></div><div id="dots" class="dots" aria-hidden="true"></div>
+<div class="controls"><button id="play" class="primary" type="button">Play flow</button><button id="next" type="button">Next step →</button><button id="replay" type="button">↺ Replay</button><span id="step" class="mono muted"></span></div>
+<div class="compare"><button id="protected" type="button">Replay with protection →</button><p>Same crash. Same redelivery. One committed order.</p></div>
+</section>
+<noscript><p>Enable JavaScript to run the animation. With manual acknowledgments, a crash after the database commit but before ACK can cause redelivery. Transactional duplicate handling can prevent a second database effect.</p></noscript>
+<section class="summary"><h2>Delivery can repeat. The effect should not.</h2><p>The broker tracks acknowledgment, not your database commit. Make the consumer safe to run again for the same logical operation.</p></section>
+<div class="lessons"><section><h3>What the ACK actually means</h3><p>It tells the broker this delivery is handled. In this example, once the failed connection is detected and closed, the unacknowledged message returns to the queue.</p><p>A database commit and a broker ACK are separate actions. The application can fail between them.</p></section><section><h3>What protection actually needs</h3><p>A stable message ID, a database-enforced unique key scoped to this consumer, and one transaction that commits both the processed marker and the order write.</p><p>On redelivery, a committed marker means the effect already happened. Skip that effect and acknowledge the new delivery.</p></section></div>
+<details><summary>Show the transactional pattern →</summary><pre>On delivery of msg_1042:
+  BEGIN TRANSACTION
+    Atomically claim (consumer_name, message_id)
+    using a UNIQUE constraint.
+
+    If an already-committed claim exists:
+      Do not repeat the order write.
+    Otherwise:
+      Insert the order in this same transaction.
+  COMMIT
+
+  ACK the current delivery on its own channel.</pre><p>This is pseudocode, not a copy-paste implementation. Handle concurrent claims and uniqueness conflicts using your database’s transaction semantics. If the transaction fails, neither the marker nor the order should commit. Do not swallow an unrelated write failure and ACK it as a duplicate.</p></details>
+<details><summary>Why not acknowledge before writing?</summary><p>If the broker accepts the ACK and the consumer then crashes before the write commits, the message is gone from this queue and the order is missing. Moving the ACK earlier trades duplicate risk for lost work.</p></details>
+<details><summary>What this example simplifies →</summary><p>The illustration uses a surviving RabbitMQ-style queue with manual ACKs, an available database, and no external side effects. Actual failure detection takes time; redelivery can go to a different consumer. Recovery, ordering, delivery limits, and dead-letter behavior depend on configuration.</p><p>The processed marker protects only writes in its database transaction. Sending an email or calling a payment API needs its own safe delivery or idempotency strategy. The redelivered flag is a hint, not a durable business operation ID. Marker retention must cover the replay horizon; distinct message IDs for the same business operation may also require business-level uniqueness.</p></details>
+<p class="sources">Further reading: <a href="https://www.rabbitmq.com/docs/confirms" target="_blank" rel="noopener">RabbitMQ acknowledgments</a> · <a href="https://www.rabbitmq.com/docs/reliability" target="_blank" rel="noopener">RabbitMQ reliability guide</a></p>
+</main><footer>Ask your team: what happens if our consumer dies immediately after its database commit? <a href="index.html">More engineering content →</a></footer>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+let frames=[],position=0,timer=null,motion=null;
+let packetPosition='translate(142px,50px)';
+function build(){
+ const crash=$('crash').checked, safe=$('dedupe').checked;
+ const f=(title,text,ready,unacked,deliveries,orders,focus,point,queue,consumer,db,kind='')=>({title,text,ready,unacked,deliveries,orders,focus,point,queue,consumer,db,kind});
+ const result=[
+ f('A message is ready.','msg_1042 asks the consumer to create an order. The message ID stays the same across redeliveries.',1,0,0,0,'queue',[142,50],'Message ready','Waiting','No order rows'),
+ f('Delivery is not completion.','The queue sends msg_1042. It is now unacknowledged, waiting for the consumer’s ACK.',0,1,1,0,'consumer',[450,50],'Awaiting ACK','Processing','No order rows'),
+ f('The order commits.',safe?'One transaction saves the processed marker and the order. Both are durable before the ACK.':'The consumer inserts and commits one order row. The broker still has no acknowledgment.',0,1,1,1,'db',[757,50],'Awaiting ACK','Write committed',safe?'1 row + marker':'1 order row')
+ ];
+ if(crash){result.push(
+ f('Crash in the gap.','The consumer stops after COMMIT but before sending ACK. Its database write survives.',0,1,1,1,'consumer',[450,50],'Awaiting ACK','Crashed',safe?'1 row + marker':'1 order row','crash'),
+ f('The broker detects the closed connection.','The unacknowledged message is requeued. Failure detection is not instantaneous; this animation compresses the wait.',1,0,1,1,'queue',[142,50],'Requeued','Offline',safe?'1 row + marker':'1 order row'),
+ f('The same message is delivered again.','A recovered consumer receives msg_1042. This is delivery number two, not a new logical operation.',0,1,2,1,'consumer',[450,50],'Awaiting new ACK','Processing again',safe?'1 row + marker':'1 order row'),
+ f(safe?'A committed marker blocks the repeat.':'The naive handler repeats its write.',safe?'The unique processed key already exists. The consumer skips the order insert because the original transaction committed.':'The handler inserts another row with a new row ID. Nothing in this naive schema prevents the same message from creating a second order.',0,1,2,safe?1:2,'db',[757,50],'Awaiting new ACK',safe?'Duplicate skipped':'Write repeated',safe?'1 row + marker':'2 order rows')
+ );}
+ const deliveries=crash?2:1, orders=crash&&!safe?2:1;
+ result.push(
+ f('ACK follows the completed work.','The active consumer acknowledges the current delivery. The broker can now remove it from the queue.',0,0,deliveries,orders,'queue',[142,230],'Acknowledged','ACK sent',safe?'1 row + marker':`${orders} order row${orders===1?'':'s'}`,'ack'),
+ f(orders===2?'One message caused two effects.':crash?'Two deliveries. One database effect.':'One delivery. One database effect.',orders===2?'Enable transactional deduplication and replay the same crash to see the second write prevented.':crash?'Duplicate handling did not prevent redelivery. It prevented a repeated committed order write.':'The happy path completes. Enable the crash to explore the gap between COMMIT and ACK.',0,0,deliveries,orders,'db',[757,50],'Empty','Waiting',safe?'1 row + marker':`${orders} order row${orders===1?'':'s'}`)
+ );return result;
+}
+function halt(){if(timer!==null)clearInterval(timer);timer=null;if(motion)motion.pause();$('play').textContent='Play flow';}
+function draw(animate=true){
+ const f=frames[position];
+ for(const id of ['ready','unacked','deliveries','orders'])$(id).textContent=String(f[id]);
+ $('event-title').textContent=f.title;$('event-text').textContent=f.text;$('queue-state').textContent=f.queue;$('consumer-state').textContent=f.consumer;$('db-state').textContent=f.db;
+ for(const id of ['queue','consumer','db'])$(id+'-box').setAttribute('class','box'+(id===f.focus?' focus':'')+(id==='consumer'&&f.kind==='crash'?' failed':''));
+ const packet=$('packet'), target=`translate(${f.point[0]}px,${f.point[1]}px)`;
+ if(motion){motion.cancel();motion=null;}
+ packet.style.transform=target;packet.setAttribute('class','packet'+(f.kind?' '+f.kind:''));
+ if(animate&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches&&packet.animate){motion=packet.animate([{transform:packetPosition},{transform:target}],{duration:800,easing:'ease-in-out'});}
+ packetPosition=target;
+ $('step').textContent=`${position+1} / ${frames.length}`;
+ $('dots').replaceChildren(...frames.map((_,i)=>{const el=document.createElement('span');el.className='dot'+(i<=position?' on':'');return el;}));
+ $('next').disabled=position===frames.length-1;
+ if(position===frames.length-1){if(timer!==null)clearInterval(timer);timer=null;$('play').textContent='Play again';}
+}
+function restart(){halt();frames=build();position=0;draw(false);}
+function start(){if(position===frames.length-1)restart();if(motion)motion.play();$('play').textContent='Pause';timer=setInterval(()=>{if(position<frames.length-1){position++;draw();}},2200);}
+$('play').addEventListener('click',()=>{if(timer!==null)halt();else start();});
+$('next').addEventListener('click',()=>{halt();if(position<frames.length-1){position++;draw();}});
+$('replay').addEventListener('click',restart);
+$('crash').addEventListener('change',restart);$('dedupe').addEventListener('change',restart);
+$('protected').addEventListener('click',()=>{$('crash').checked=true;$('dedupe').checked=true;restart();start();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)halt();});
+restart();
+</script>
+</body>
+</html>

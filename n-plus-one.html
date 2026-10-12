@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A 45-second engineering tip: spot the N+1 query problem and fetch the data your screen needs without one database call per row.">
+<meta property="og:title" content="Your query works. Your API makes 101 of them."><meta property="og:description" content="One query for orders. One extra query per customer. See the hidden cost and a better approach."><meta property="og:type" content="article">
+<title>The N+1 query trap · Engineering Byte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf9f7;--ink:#1c1917;--muted:#69615b;--line:#e7e5e0;--accent:#b84d08}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 'IBM Plex Sans',sans-serif}a{color:var(--accent)}nav,main,footer{max-width:800px;margin:auto;padding:22px 24px}header{border-bottom:1px solid var(--line)}nav{display:flex;justify-content:space-between;gap:16px;align-items:center}nav a{text-decoration:none;font-size:13px}.mono{font:11px/1.6 'JetBrains Mono',monospace;letter-spacing:.08em}.eyebrow{color:var(--accent);text-transform:uppercase}.muted{color:var(--muted)}main{padding-top:34px}h1,h2,h3{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;line-height:1.12}h1{font-size:clamp(33px,5vw,49px);margin:16px 0}h1 span{color:var(--accent)}h2{font-size:22px;margin:0 0 10px}h3{font-size:18px;margin:18px 0 8px}p{margin:0 0 16px}.lede{font-size:17px;max-width:620px;color:var(--muted)}.visual{background:#211f23;color:#f8f5ef;padding:24px;border-radius:14px;margin:24px 0}.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}.toolbar .mono{color:#e0d3c5}.toolbar label{font-size:12px;color:#d8d0dc}select{font:inherit;color:inherit;background:#353139;border:1px solid #716778;border-radius:4px;padding:4px;margin-left:8px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}.panel{padding:18px;border:1px solid #67523f;border-radius:9px;background:#332923}.panel.good{border-color:#4f7164;background:#24352d}.label{font-size:12px;color:#f3bf91}.good .label{color:#a8d8bd}.count{font-family:'Bricolage Grotesque',sans-serif;font-size:58px;line-height:1;margin:13px 0 10px}.count small{font:12px 'IBM Plex Sans',sans-serif;color:#d8cfd8}.equation{font:12px 'JetBrains Mono',monospace;color:#ddd0c5}.good .equation{color:#c1d7c9}.pixels{display:flex;gap:3px;flex-wrap:wrap;min-height:48px;margin:16px 0 0;align-content:flex-start}.pixels i{display:block;width:7px;height:7px;background:#f7b67d;border-radius:1px}.good .pixels i{background:#9ed8b6}.visual-note{font-size:12px;color:#c8c0cd;margin:16px 0 0}.takeaway{background:#fff1e4;border-left:3px solid var(--accent);padding:17px 20px;margin:20px 0}.takeaway p{margin:0;font-size:15px}.check{font-size:15px;color:var(--muted)}details{border:1px solid var(--line);border-radius:9px;padding:16px 20px;margin:12px 0;background:white}summary{font-weight:500;cursor:pointer}details p{font-size:14px;color:var(--muted);margin-top:12px}pre{margin:12px 0;background:#f4f1ed;padding:16px;border-radius:6px;overflow-x:auto;font:12px/1.7 'JetBrains Mono',monospace}code{font-family:'JetBrains Mono',monospace;font-size:.85em}.links{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0}.links a{font-size:13px;text-decoration:none;padding:9px 13px;border:1px solid #d6c3b4;border-radius:5px}.closing{font-size:13px;color:var(--muted);padding-top:15px;border-top:1px solid var(--line)}footer{font-size:12px;color:var(--muted)}a:focus-visible,summary:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:5px}@media(max-width:500px){nav,main,footer{padding-left:18px;padding-right:18px}nav .mono{font-size:9px}.visual{padding:16px}.toolbar{flex-wrap:wrap}.panel{padding:13px}.count{font-size:46px}.equation{font-size:10px}.label{font-size:11px}.compare{gap:8px}.pixels i{width:6px;height:6px}pre{font-size:11px}}
+</style>
+</head>
+<body>
+<header><nav aria-label="Main"><a href="index.html">← Engineering Articles</a><span class="mono muted">SHASHANK / TECH BYTE 001</span></nav></header>
+<main>
+<article aria-labelledby="title">
+<div class="mono eyebrow">Database performance · 45-second read</div>
+<h1 id="title">Your query works.<br><span>Your API makes 101 of them.</span></h1>
+<p class="lede">Fetch 100 orders. Then fetch each order’s customer separately. The screen looks fine. The database sees <strong>1 + 100 queries</strong>. That’s the N+1 trap.</p>
+<section class="visual" aria-label="Query count comparison">
+<div class="toolbar"><span class="mono">SAME SCREEN. FEWER ROUND TRIPS.</span><label for="rows">Orders<select id="rows"><option value="10">10</option><option value="50">50</option><option value="100" selected>100</option><option value="500">500</option></select></label></div>
+<div class="compare" aria-live="polite" aria-atomic="true">
+<div class="panel"><div class="label">BEFORE · LOOKUP PER ROW</div><div class="count"><span id="bad-count">101</span> <small>queries</small></div><div id="equation" class="equation">1 orders + 100 customers</div><div id="bad-pixels" class="pixels" aria-hidden="true"></div></div>
+<div class="panel good"><div class="label">AFTER · JOINED PROJECTION</div><div class="count">1 <small>query</small></div><div class="equation">Orders + customer names</div><div class="pixels" aria-hidden="true"><i></i></div></div>
+</div><p class="visual-note">Illustrative counts, not a benchmark. Before: one separate lookup per order. After: a simple relational join. Dots show up to 101 queries.</p>
+</section>
+<div class="takeaway"><h2>Fetch for the screen, not inside the loop.</h2><p>Project the order fields and customer name together. Appropriate eager loading or batching can also avoid per-row calls.</p></div>
+<p class="check"><strong>Try this today:</strong> inspect database command logs for one list request. Repeated lookups with different IDs are a clue. Check the generated SQL before calling it fixed.</p>
+<details><summary>Show me the EF Core example →</summary>
+<p>This example assumes a required Order-to-Customer relationship and a relational provider. The first version explicitly performs a lookup per order, so it does not depend on lazy loading being enabled.</p>
+<h3>Before: the loop makes database calls</h3>
+<pre><code>var orders = await db.Orders
+    .OrderBy(o =&gt; o.Id)
+    .Take(100)
+    .ToListAsync();
+
+foreach (var order in orders)
+{
+    var customerName = await db.Customers
+        .Where(c =&gt; c.Id == order.CustomerId)
+        .Select(c =&gt; c.Name)
+        .SingleAsync();
+
+    // Build the row using order.Id and customerName.
+}</code></pre>
+<h3>After: shape the result in the query</h3>
+<pre><code>var rows = await db.Orders
+    .OrderBy(o =&gt; o.Id)
+    .Take(100)
+    .Select(o =&gt; new
+    {
+        OrderId = o.Id,
+        CustomerName = o.Customer.Name
+    })
+    .ToListAsync();</code></pre>
+<p>The projection can translate into one SQL statement joining orders to customers. It returns the fields this screen needs.</p>
+</details>
+<details><summary>One thing to remember →</summary><p>A navigation property does not always cause another query. Lazy loading, explicit lookups, and already-loaded data behave differently. Also, one huge join is not automatically best: collection joins can multiply rows, and split queries or batching may be a better tradeoff. Measure query count, payload size, and latency.</p></details>
+<div class="links"><a href="https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying" target="_blank" rel="noopener">Deep dive: EF Core efficient querying ↗</a><a href="index.html">More engineering content →</a></div>
+<p class="closing"><strong>Ask your team:</strong> does our query count grow with the number of rows on the screen?</p>
+</article>
+</main><footer>One useful idea. One minute. Take it into your next code review.</footer>
+<script>
+'use strict';
+const rows = document.getElementById('rows');
+function update(){
+ const n = Number(rows.value);
+ document.getElementById('bad-count').textContent = String(n + 1);
+ document.getElementById('equation').textContent = `1 orders + ${n} customers`;
+ const dots = Array.from({length:Math.min(n + 1,101)},()=>document.createElement('i'));
+ document.getElementById('bad-pixels').replaceChildren(...dots);
+}
+rows.addEventListener('change',update);
+update();
+</script>
+</body>
+</html>

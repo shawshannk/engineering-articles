@@ -8,7 +8,7 @@ Companion continuity record for the stable IDs in Engineering_Knowledge_Hub_Proj
 
 ## EX-19 brief
 
-- State: Draft; branch content/ex-19-refresh-reuse; page refresh-token-reuse.html. PR pending. Not merged or published.
+- State: PR open (draft); branch content/ex-19-refresh-reuse; page refresh-token-reuse.html. [PR #4](https://github.com/shawshannk/engineering-articles/pull/4). Not merged or published.
 - Outcome: follow token rotation and distinguish strict reuse detection from a documented provider-specific reuse interval.
 - Assumptions: bearer refresh tokens, one tracked family, atomic serialized server updates, Tab A wins, ordered responses, no further refreshes; +1/+8 seconds and 5-second interval are illustrative.
 - Policy: strict family revocation versus Auth0-style overlap issuing another successor. Early thief and legitimate tab receive the same policy outcome. No claim that every provider behaves this way.

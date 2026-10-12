@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A refresh token is used twice · Engineering Knowledge Hub</title>
+<meta name="description" content="Two requests use the same refresh token. Step through rotation, strict reuse detection, and a provider-specific overlap window.">
+<meta property="og:type" content="article"><meta property="og:title" content="A refresh token is used twice"><meta property="og:description" content="Two tabs refresh one session. Watch how the configured reuse policy changes the outcome.">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#faf9f7;color:#292524;font:17px/1.65 'IBM Plex Sans',system-ui,sans-serif}main,header,footer{max-width:960px;margin:auto;padding:24px}header{border-bottom:1px solid #ded8d0;font-size:14px;display:flex;justify-content:space-between;gap:16px}a{color:#ac4707;text-underline-offset:4px}h1,h2,h3{font-family:'Bricolage Grotesque',system-ui,sans-serif;line-height:1.15}h1{font-size:clamp(36px,6vw,58px);max-width:780px;margin:20px 0}h2{font-size:25px}.eyebrow{font:12px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.09em;color:#ac4707}.lead{font-size:22px;color:#625a54;max-width:760px}.small{font-size:14px;color:#625a54}.panel{padding:24px;background:#f3f0eb;border:1px solid #ded8d0;border-radius:12px;margin:24px 0}.settings{display:grid;grid-template-columns:1fr 1fr;gap:20px}label{font-weight:600;display:block}select{display:block;width:100%;margin-top:8px;background:white;color:#292524;border:1px solid #82766b;padding:12px;border-radius:6px;font:inherit;font-size:15px}.controls{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}button{padding:10px 16px;min-height:44px;font:inherit;font-size:15px;border:1px solid #ac4707;border-radius:6px;background:white;color:#ac4707;cursor:pointer}button:first-child{background:#ac4707;color:white}button:disabled{opacity:.55;cursor:default}:focus-visible{outline:3px solid #ac4707;outline-offset:4px}.skip{position:absolute;top:-80px;background:white;padding:12px}.skip:focus{top:8px}.stage{position:relative;padding:24px 0;min-height:190px}.lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.lane{padding:16px;background:white;border:1px solid #ded8d0;border-radius:8px;min-height:130px}.lane h3{font-size:18px;margin:0 0 12px}.lane p{font-size:14px;margin:0}.packet{position:absolute;top:92px;left:13%;background:#ac4707;color:white;padding:7px 14px;border-radius:20px;font:13px 'JetBrains Mono',monospace;box-shadow:0 3px 10px #0002;pointer-events:none}.ledger{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.token{background:white;border:1px solid #ded8d0;padding:12px;border-radius:6px;font-size:14px}.token strong{display:block;font:16px 'JetBrains Mono',monospace;margin-bottom:6px}.active{border-left:4px solid #326646}.consumed{border-left:4px solid #ac4707}.revoked{border-left:4px solid #a22e32}.absent{border-left:4px solid #82766b}.story{min-height:140px;padding:20px;background:#fff2e5;border-left:4px solid #ac4707}.story h2{margin:0 0 10px;font-size:23px}.story p{margin:0}.stats{display:flex;gap:20px;flex-wrap:wrap;font:13px/1.6 'JetBrains Mono',monospace;margin:18px 0}details{border-top:1px solid #ded8d0;margin:24px 0;padding-top:14px}summary{cursor:pointer;font-weight:600;color:#ac4707}li{margin:10px 0}code{font:14px 'JetBrains Mono',monospace}footer{border-top:1px solid #ded8d0;font-size:14px}.legend{font-size:14px;margin:14px 0}.lesson{font-size:21px} @media(max-width:600px){main,header,footer{padding:18px}.panel{padding:16px}.settings{grid-template-columns:1fr}.lanes{gap:8px}.lane{padding:10px;min-height:155px}.lane h3{font-size:16px}.lane p{font-size:12px}.ledger{gap:6px}.token{padding:8px;font-size:12px}.stage{min-height:215px}.packet{top:114px}.story{min-height:190px}header{flex-wrap:wrap}.stats{gap:10px}h1{font-size:38px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body><a class="skip" href="#main">Skip to explainer</a><header><a href="index.html">← Engineering Articles</a><span>Engineering Knowledge Hub</span></header>
+<main id="main"><span class="eyebrow">EX-19 · Interactive explainer · 60-second flow</span><h1>A refresh token is used twice.</h1><p class="lead">Two tabs try to refresh one session. One succeeds. The other sends the old token. Should that end the session?</p><p>A refresh token lets a client request new access tokens. With <strong>rotation</strong>, a successful refresh replaces it. Reusing the old value is where policy matters.</p>
+<div class="panel" id="simulation" hidden>
+<div class="settings"><div><label for="policy">Reuse policy</label><select id="policy"><option value="strict">Strict: revoke the family on reuse</option><option value="overlap">Auth0-style: 5-second reuse interval</option></select></div><div><label for="scenario">Who sends the second request?</label><select id="scenario"><option value="tab">Tab B at +1 second</option><option value="early">Token thief at +1 second</option><option value="late">Token thief at +8 seconds</option></select></div></div>
+<p class="small">Illustrative times, not provider defaults. Changing either control resets the flow. Both requests carry R1; the server receives no reliable “tab” or “thief” label.</p>
+<div class="controls"><button id="play" type="button">Play</button><button id="pause" type="button" disabled>Pause</button><button id="next" type="button">Next step</button><button id="replay" type="button">Replay / reset</button></div>
+<p id="playback" class="small" role="status" aria-live="polite">Ready.</p>
+<div class="stage" aria-label="Request path: Tab A and a second sender contact the authorization server"><div class="lanes"><div class="lane"><h3>Tab A</h3><p id="a-state"></p></div><div class="lane"><h3 id="b-title">Tab B</h3><p id="b-state"></p></div><div class="lane"><h3>Auth server</h3><p id="server-state"></p></div></div><span id="packet" class="packet" aria-hidden="true" hidden>R1</span></div>
+<div class="stats"><span id="step-count"></span><span id="issued-count"></span><span id="family-state"></span></div>
+<div class="ledger" aria-label="Refresh-token family"><div id="r1" class="token"><strong>R1</strong><span></span></div><div id="r2" class="token"><strong>R2</strong><span></span></div><div id="r3" class="token"><strong>R3</strong><span></span></div></div>
+<p class="legend"><strong>Legend:</strong> active = current token; consumed = superseded; revoked = blocked with its family; not issued = does not exist. “Consumed, overlap eligible” means only the immediately previous token may be reused inside the selected interval. Issued counts include initial R1 and exclude access tokens.</p>
+<div class="story" role="status" aria-live="polite" aria-atomic="true"><h2 id="story-title"></h2><p id="story-text"></p></div>
+</div>
+<noscript><p>The interactive flow needs JavaScript. The summary and policy details below explain the same outcomes.</p></noscript>
+<h2>The outcome depends on policy</h2><p>Tab A exchanges R1 for R2. Under the strict scenario, a second R1 request revokes the refresh-token family. Under the modeled Auth0-style interval, a +1-second reuse issues R3; a +8-second reuse revokes the family. An early thief gets the same overlap treatment as Tab B.</p><p class="lesson"><strong>A reuse interval reduces some false alarms. It also creates a replay window.</strong> Coordinate refreshes in the client, and check your provider’s exact behavior.</p>
+<details><summary>Assumptions and provider-specific limits</summary><ul><li>This is a deterministic teaching simulation, not an authentication implementation. Tokens are labels, not credentials. No network calls occur.</li><li>Both requests target one tracked token family. Tab A reaches the server first; its response arrives before the second request. In-flight response reordering and additional refreshes are outside this flow.</li><li>The server serializes token checks and family updates atomically across instances. A process-local lock alone would not establish this assumption.</li><li>Strict mode models rotation with reuse detection and no overlap. The grant is revoked when an already-consumed refresh token is presented.</li><li>Auth0-style mode models its documented reuse interval: the most recently superseded token can be exchanged again during the interval, issuing another replacement. After R3 is issued, R1 is too old; it cannot keep being reused merely because five seconds have not elapsed. This does not claim that R2 was revoked by issuing R3.</li><li>The window is illustrated as five seconds after the first exchange. We do not simulate the precise boundary instant. Providers and configurations differ.</li><li>These are bearer tokens, without sender constraint. Client identity and short timing do not prove that the sender is legitimate.</li></ul></details>
+<details><summary>What about access tokens and the two tabs?</summary><p>The ledger tracks refresh tokens only. Already-issued access tokens may remain usable until expiry if APIs validate them locally without a revocation check. A refresh failure therefore does not necessarily mean every API call fails immediately.</p><p>After strict reuse detection, the client needs a new authorization flow to obtain a usable refresh grant. That does not necessarily force a password prompt if an identity-provider session still exists.</p><p>For legitimate concurrency, centralize refresh coordination using your supported SDK or a suitable session owner. A promise shared in one tab does not coordinate all tabs. Avoid logging token values; observe refresh failures and confirm recovery behavior against your actual provider.</p></details>
+<details><summary>Try this with your team</summary><p>Select the overlap policy, then compare Tab B with the early thief. What evidence does your server have to distinguish them? Then select the late thief. Review whether your client coordinates refreshes and what happens after a rejected exchange.</p></details>
+<h2>Further reading</h2><ul><li><a href="https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14.2">RFC 9700, section 4.14.2: refresh-token protection</a></li><li><a href="https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-rotation">Auth0: configure rotation and the reuse interval</a></li><li><a href="https://auth0.com/docs/secure/tokens/refresh-tokens/refresh-token-rotation">Auth0: automatic reuse detection</a></li></ul>
+</main><footer><a href="index.html">← Back to all articles</a><p>Rotation detects reuse. Policy determines the response.</p></footer>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const policy=$('policy'), scenario=$('scenario');
+let step=0, running=false, timer=null, started=0, remaining=6500, animation=null;
+const duration=6500;
+const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+function overlap(){return policy.value==='overlap';}
+function accepted(){return overlap() && scenario.value!=='late';}
+function sender(){return scenario.value==='tab'?'Tab B':'Token thief';}
+function token(id,state){const el=$(id);el.className='token '+(state.startsWith('active')?'active':state.startsWith('consumed')?'consumed':state==='revoked'?'revoked':'absent');el.querySelector('span').textContent=state;}
+function render(){
+ const ok=accepted(), other=sender();
+ const titles=['One token, two holders','Tab A sends R1','R1 becomes R2','The second sender sends R1',ok?'Overlap accepted':'Reuse detected',ok?'Another replacement exists':'Refresh grant revoked'];
+ const texts=[`Tab A and ${other} hold the same R1. The server does not know whether the second holder is legitimate.`,
+ 'Tab A requests new access tokens. R1 is still active until the server commits the exchange.',
+ 'The server atomically consumes R1 and issues R2. Tab A receives R2. No second request has been evaluated yet.',
+ `${other} sends R1 at +${scenario.value==='late'?8:1} second${scenario.value==='late'?'s':''}. The server sees the old token, not the sender’s intent.`,
+ ok?'The modeled interval admits reuse of the immediately previous R1. The server issues R3. Timing has not authenticated the sender.':'The consumed R1 is outside the configured reuse allowance. The server rejects this exchange and revokes the family.',
+ ok?`${other} now receives R3. R1 is no longer the immediately previous token. ${scenario.value==='tab'?'The legitimate race was tolerated.':'The thief also obtained a replacement.'} Coordinate refreshes; do not treat overlap as proof of identity.`:'R2 can no longer refresh. The client needs a new authorization flow. Existing access tokens may still work until expiry or a separate revocation check.'];
+ $('story-title').textContent=titles[step];$('story-text').textContent=texts[step];
+ $('a-state').textContent=step<2?'Holds R1':step>=4&&!ok?'Holds R2; refresh blocked':'Holds R2';
+ $('b-title').textContent=other;$('b-state').textContent=step<4?'Holds R1':ok?'Receives R3':'Exchange rejected';
+ $('server-state').textContent=step<2?'R1 is current':step<4?'R2 is current':ok?'R3 is current':'Grant revoked';
+ $('step-count').textContent=`Step ${step} of 5`;$('issued-count').textContent=`Refresh tokens issued: ${step<2?1:step<4||!ok?2:3}`;
+ $('family-state').textContent=`Family: ${step>=4&&!ok?'revoked':'valid'}`;
+ token('r1',step<2?'active':step>=4&&!ok?'revoked':step<4&&overlap()&&scenario.value!=='late'?'consumed, overlap eligible':'consumed');
+ token('r2',step<2?'not issued':step>=4&&!ok?'revoked':step>=4&&ok?'consumed, overlap eligible':'active');
+ token('r3',step>=4&&ok?'active':'not issued');
+ $('next').disabled=step===5;$('play').disabled=running||step===5;$('pause').disabled=!running;
+}
+function cancelAnimation(){if(animation){animation.cancel();animation=null;}$('packet').hidden=true;}
+function motion(){cancelAnimation();if((step!==1&&step!==3)||reduced.matches)return;
+ const packet=$('packet');packet.hidden=false;
+ const start=step===1?'13%':'47%';
+ animation=packet.animate([{left:start},{left:'78%'}],{duration:2200,fill:'forwards',easing:'ease-in-out'});
+ animation.onfinish=()=>{packet.hidden=true;};
+ if(!running)animation.pause();
+}
+function schedule(){started=performance.now();timer=setTimeout(()=>{timer=null;remaining=duration;advance();if(running)schedule();},remaining);}
+function stop(message){if(timer!==null){clearTimeout(timer);timer=null;remaining=Math.max(0,remaining-(performance.now()-started));}running=false;if(animation)animation.pause();render();$('playback').textContent=message;}
+function advance(){if(step>=5)return;step++;render();motion();if(step===5)stop('Flow complete. Replay or change a scenario.');}
+function reset(){stop('Ready.');step=0;remaining=duration;cancelAnimation();render();$('playback').textContent='Ready. Settings retained; token state and counts reset.';}
+$('play').addEventListener('click',()=>{if(running||step===5)return;running=true;render();$('playback').textContent='Playing.';if(animation)animation.play();schedule();});
+$('pause').addEventListener('click',()=>stop('Paused. Play resumes the remaining step time.'));
+$('next').addEventListener('click',()=>{stop('Manual step.');remaining=duration;advance();});
+$('replay').addEventListener('click',reset);policy.addEventListener('change',reset);scenario.addEventListener('change',reset);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&running)stop('Paused while the page is hidden.');});
+window.addEventListener('pagehide',()=>{stop('Paused.');cancelAnimation();});
+reduced.addEventListener('change',()=>{if(reduced.matches)cancelAnimation();});
+$('simulation').hidden=false;render();
+})();
+</script>
+</body></html>

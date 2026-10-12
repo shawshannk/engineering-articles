@@ -4,7 +4,7 @@ Companion continuity record for the stable IDs in Engineering_Knowledge_Hub_Proj
 
 | ID | State | Branch / file | Evidence | Last checked |
 | --- | --- | --- | --- | --- |
-| DD-20 | Draft | content/dd-20-ai-code-evidence / ai-code-evidence.html | Article and index integrated. DOM logic and structural checks passed; browser visual and keyboard checks blocked. PR link to follow. | 2026-10-12 |
+| DD-20 | PR open (draft) | content/dd-20-ai-code-evidence / ai-code-evidence.html | Article and index integrated. DOM logic and structural checks passed; browser visual and keyboard checks blocked. [Draft PR #3](https://github.com/shawshannk/engineering-articles/pull/3). | 2026-10-12 |
 
 ## DD-20 brief
 

@@ -6,9 +6,20 @@ Companion continuity record for the stable IDs in Engineering_Knowledge_Hub_Proj
 | --- | --- | --- | --- | --- |
 | DD-20 | Merged | content/dd-20-ai-code-evidence / ai-code-evidence.html | Article and index integrated. DOM logic and structural checks passed; browser visual and keyboard checks blocked. [Merged PR #3](https://github.com/shawshannk/engineering-articles/pull/3). | 2026-10-12 |
 
+## EX-07 brief
+
+- State: PR open (draft); branch content/ex-07-hidden-queries; page hidden-queries.html; [PR #5](https://github.com/shawshannk/engineering-articles/pull/5). Not merged or published.
+- Outcome: distinguish HTTP calls from database round trips and identify query-count growth with page size.
+- Assumptions: stable relational data, exactly 10/50/100 orders, required tenant-consistent customer reference, explicit per-order query with no cache/batch, simple joined projection, no failures/retries/extra count queries. Reads are not modeled inside a transaction.
+- Interactions: seven meaningful phases, grouped lookup visualization, page size and strategy controls, Play/Pause/Next/Replay. Counters distinguish HTTP requests, database statements and delivered response rows; progress tracks rows assembled at the API.
+- Verification: actual page script executed in jsdom across six combinations and every transition/counter; autoplay completion, manual next, pause/resume remaining delay and animation API calls, both setting resets, replay, visibility/pagehide pause, reduced motion including mid-flow changes, JS-disabled fallback. Static IDs, anchors, local links, no-em-dash rule and diff whitespace checked.
+- Limitations: Chromium absent. DOM checks and animation stubs do not establish real desktop/mobile layout, keyboard behavior or browser animation. No database or C# application executed. Code excerpts are labeled illustrative.
+- Sources: Microsoft EF Core efficient querying and lazy-loading documentation. Existing TB-01 linked at n-plus-one.html.
+- Caption: One request in the browser can become 101 queries in the database. Watch where the extra calls come from.
+
 ## EX-19 brief
 
-- State: PR open (draft); branch content/ex-19-refresh-reuse; page refresh-token-reuse.html. [PR #4](https://github.com/shawshannk/engineering-articles/pull/4). Not merged or published.
+- State: Merged; branch content/ex-19-refresh-reuse; page refresh-token-reuse.html. [Merged PR #4](https://github.com/shawshannk/engineering-articles/pull/4). Confirmed on main 2026-10-13; deployment not verified.
 - Outcome: follow token rotation and distinguish strict reuse detection from a documented provider-specific reuse interval.
 - Assumptions: bearer refresh tokens, one tracked family, atomic serialized server updates, Tab A wins, ordered responses, no further refreshes; +1/+8 seconds and 5-second interval are illustrative.
 - Policy: strict family revocation versus Auth0-style overlap issuing another successor. Early thief and legitimate tab receive the same policy outcome. No claim that every provider behaves this way.
@@ -30,3 +41,11 @@ Companion continuity record for the stable IDs in Engineering_Knowledge_Hub_Proj
 - Current repository evidence: PR #3 merged into main; deployment not verified.
 
 Optional team-sharing caption: AI can write the code. What evidence makes the change reviewable? A practical deep dive with an API example, a risk-based checklist, and a reusable handoff.
+
+## PR #5 presentation updates
+
+- Requested 2026-10-13: keep index numbering descending from 07 to 01; the last two labels were swapped.
+- Remove visible topic-bank IDs from all current reader pages, including related links and the numbered tech-byte label. IDs remain in this tracker and source comments.
+- Restyle ai-harness.html with the hub's paper/orange palette, shared typography, back navigation, keyboard focus, and scrollable tables/diagram on narrow screens. Preserve section prose, code, table content and SVG structure. Correct its placeholder Open Graph URL.
+- Verification: DOM checks confirm ordered card numbers, no visible bank IDs on any current page, preserved AI article section/header/footer text and diagram/table counts, valid local links and unique IDs. EX-07 logic suite still passes. CRLF-aware diff whitespace check passed.
+- Limits: Chromium unavailable; desktop/mobile visual rendering and real keyboard/animation behavior remain unverified.

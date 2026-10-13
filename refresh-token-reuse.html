@@ -11,7 +11,7 @@
 </style>
 </head>
 <body><a class="skip" href="#main">Skip to explainer</a><header><a href="index.html">← Engineering Articles</a><span>Engineering Knowledge Hub</span></header>
-<main id="main"><span class="eyebrow">EX-19 · Interactive explainer · 60-second flow</span><h1>A refresh token is used twice.</h1><p class="lead">Two tabs try to refresh one session. One succeeds. The other sends the old token. Should that end the session?</p><p>A refresh token lets a client request new access tokens. With <strong>rotation</strong>, a successful refresh replaces it. Reusing the old value is where policy matters.</p>
+<main id="main"><span class="eyebrow">Interactive explainer · 60-second flow</span><h1>A refresh token is used twice.</h1><p class="lead">Two tabs try to refresh one session. One succeeds. The other sends the old token. Should that end the session?</p><p>A refresh token lets a client request new access tokens. With <strong>rotation</strong>, a successful refresh replaces it. Reusing the old value is where policy matters.</p>
 <div class="panel" id="simulation" hidden>
 <div class="settings"><div><label for="policy">Reuse policy</label><select id="policy"><option value="strict">Strict: revoke the family on reuse</option><option value="overlap">Auth0-style: 5-second reuse interval</option></select></div><div><label for="scenario">Who sends the second request?</label><select id="scenario"><option value="tab">Tab B at +1 second</option><option value="early">Token thief at +1 second</option><option value="late">Token thief at +8 seconds</option></select></div></div>
 <p class="small">Illustrative times, not provider defaults. Changing either control resets the flow. Both requests carry R1; the server receives no reliable “tab” or “thief” label.</p>

@@ -8,7 +8,7 @@ Companion continuity record for the stable IDs in Engineering_Knowledge_Hub_Proj
 
 ## EX-07 brief
 
-- State: Draft; branch content/ex-07-hidden-queries; page hidden-queries.html; PR pending. Not merged or published.
+- State: PR open (draft); branch content/ex-07-hidden-queries; page hidden-queries.html; [PR #5](https://github.com/shawshannk/engineering-articles/pull/5). Not merged or published.
 - Outcome: distinguish HTTP calls from database round trips and identify query-count growth with page size.
 - Assumptions: stable relational data, exactly 10/50/100 orders, required tenant-consistent customer reference, explicit per-order query with no cache/batch, simple joined projection, no failures/retries/extra count queries. Reads are not modeled inside a transaction.
 - Interactions: seven meaningful phases, grouped lookup visualization, page size and strategy controls, Play/Pause/Next/Replay. Counters distinguish HTTP requests, database statements and delivered response rows; progress tracks rows assembled at the API.

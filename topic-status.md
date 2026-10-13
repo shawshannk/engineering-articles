@@ -41,3 +41,11 @@ Companion continuity record for the stable IDs in Engineering_Knowledge_Hub_Proj
 - Current repository evidence: PR #3 merged into main; deployment not verified.
 
 Optional team-sharing caption: AI can write the code. What evidence makes the change reviewable? A practical deep dive with an API example, a risk-based checklist, and a reusable handoff.
+
+## PR #5 presentation updates
+
+- Requested 2026-10-13: keep index numbering descending from 07 to 01; the last two labels were swapped.
+- Remove visible topic-bank IDs from all current reader pages, including related links and the numbered tech-byte label. IDs remain in this tracker and source comments.
+- Restyle ai-harness.html with the hub's paper/orange palette, shared typography, back navigation, keyboard focus, and scrollable tables/diagram on narrow screens. Preserve section prose, code, table content and SVG structure. Correct its placeholder Open Graph URL.
+- Verification: DOM checks confirm ordered card numbers, no visible bank IDs on any current page, preserved AI article section/header/footer text and diagram/table counts, valid local links and unique IDs. EX-07 logic suite still passes. CRLF-aware diff whitespace check passed.
+- Limits: Chromium unavailable; desktop/mobile visual rendering and real keyboard/animation behavior remain unverified.
